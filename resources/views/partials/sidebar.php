@@ -3,6 +3,7 @@ $currentRoute = trim((string) ($_GET['route'] ?? 'dashboard'), '/');
 $navigation = [
     ['dashboard', 'Overview', 'fa-grid-2', APP_URL],
     ['pos', 'Point of sale', 'fa-cash-register', '?route=pos'],
+    ['sales', 'Recent sales', 'fa-receipt', '?route=sales'],
     ['inventory', 'Inventory', 'fa-boxes-stacked', '?route=inventory'],
     ['purchases', 'Purchases', 'fa-truck-field', '?route=purchases'],
     ['services', 'Service billing', 'fa-print', '?route=services'],

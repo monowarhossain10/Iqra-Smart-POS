@@ -1,3 +1,13 @@
+<?php
+$summaryData = get_defined_vars()['summary'] ?? [];
+$summary = array_merge([
+    'sales_today' => 0,
+    'purchases_month' => 0,
+    'service_today' => 0,
+    'float' => 0,
+    'low_stock' => 0,
+], is_array($summaryData) ? $summaryData : []);
+?>
 <!doctype html>
 <html lang="en">
 <head>
@@ -160,7 +170,7 @@
                             <span style="font-size: 0.75rem; font-weight: 600; color: #2563eb; text-transform: uppercase;">Live activity</span>
                             <h2 style="font-size: 1.15rem; font-weight: 700; color: #1e293b; margin: 2px 0 0 0;">Recent sales</h2>
                         </div>
-                        <a href="?route=pos" style="color: #2563eb; text-decoration: none; font-size: 0.85rem; font-weight: 600; display: inline-flex; align-items: center; gap: 4px;">View all <i class="fa-solid fa-arrow-right"></i></a>
+                        <a href="?route=sales" style="color: #2563eb; text-decoration: none; font-size: 0.85rem; font-weight: 600; display: inline-flex; align-items: center; gap: 4px;">View all <i class="fa-solid fa-arrow-right"></i></a>
                     </div>
                     <div style="overflow-x: auto;">
                         <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 0.9rem;">

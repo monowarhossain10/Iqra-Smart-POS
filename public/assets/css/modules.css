@@ -639,6 +639,12 @@ main.standalone-module {
 .cart-summary .cart-total strong { color: var(--teal); font-size: 20px; }
 .cart-summary .change-due strong { color: #059669; }
 .recent-sales-panel { margin-top: 16px; }
+.purchase-items { display: grid; gap: 10px; }
+.purchase-item-row { padding: 10px; border: 1px solid var(--line); border-radius: 9px; background: #fbfdfc; }
+.purchase-payment-box { padding: 14px; border: 1px solid #cfe3dd; border-radius: 10px; background: #f6fbf9; }
+.purchase-totals { display: flex; flex-wrap: wrap; gap: 18px; padding-top: 10px; border-top: 1px solid #dcebe6; color: var(--muted); font-size: 12px; }
+.purchase-totals span { display: flex; gap: 5px; }
+.purchase-totals strong { color: var(--ink); }
 .held-bills-panel { margin-top: 16px; }
 .held-bills-list { display: grid; gap: 8px; }
 .held-bill-row { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 11px 12px; border: 1px solid #f1dfb4; border-radius: 9px; background: #fffaf0; }

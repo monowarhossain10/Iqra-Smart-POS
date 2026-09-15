@@ -39,6 +39,18 @@ For persistent POS held bills, apply:
 php database/migrate.php migration_007_pos_held_bills.sql
 ```
 
+For per-product purchase discounts and supplier payment reconciliation, apply:
+
+```bash
+php database/migrate.php migration_008_purchase_discounts_payments.sql
+```
+
+For product descriptions and searchable purchase product entry, apply:
+
+```bash
+php database/migrate.php migration_009_product_descriptions.sql
+```
+
 For the returns and payroll features on an existing installation, run:
 
 ```bash

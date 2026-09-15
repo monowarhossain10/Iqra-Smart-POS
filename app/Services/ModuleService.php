@@ -34,11 +34,29 @@ final class ModuleService
         $this->db->prepare('INSERT INTO mfs_daily_reconciliations (account_id, business_date, opening_float, expected_closing, actual_closing, difference, notes, reconciled_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE opening_float=VALUES(opening_float), expected_closing=VALUES(expected_closing), actual_closing=VALUES(actual_closing), difference=VALUES(difference), notes=VALUES(notes), reconciled_by=VALUES(reconciled_by), reconciled_at=NOW()')->execute([(int) $input['account_id'], $input['business_date'], $opening, $expected, $actual, $actual - $expected, trim($input['notes'] ?? '') ?: null, $userId]);
     }
     public function utilityVendors(): array { return $this->db->query('SELECT * FROM utility_vendors WHERE is_active = 1 ORDER BY name')->fetchAll(); }
-    public function saveSupplier(array $input): void { $this->db->prepare('INSERT INTO suppliers (name, contact_person, phone, email, address) VALUES (?, ?, ?, ?, ?)')->execute([trim($input['name']), trim($input['contact_person'] ?? '') ?: null, trim($input['phone'] ?? '') ?: null, trim($input['email'] ?? '') ?: null, trim($input['address'] ?? '') ?: null]); }
-
-    public function sales(): array
+    public function saveSupplier(array $input): void
     {
-        return $this->db->query("SELECT s.*, u.full_name FROM sales s JOIN users u ON u.id = s.operator_id ORDER BY s.id DESC LIMIT 50")->fetchAll();
+        $name = trim($input['name'] ?? '');
+        if ($name === '') throw new RuntimeException('Enter a supplier or company name.');
+        $this->db->prepare('INSERT INTO suppliers (name, contact_person, phone, email, address, opening_due) VALUES (?, ?, ?, ?, ?, ?)')->execute([$name, trim($input['contact_person'] ?? '') ?: null, trim($input['phone'] ?? '') ?: null, trim($input['email'] ?? '') ?: null, trim($input['address'] ?? '') ?: null, max(0, (float) ($input['opening_due'] ?? 0))]);
+    }
+
+    public function sales(?string $search = null, ?string $from = null, ?string $to = null, ?string $status = null): array
+    {
+        $where = ['1 = 1'];
+        $params = [];
+        if ($search !== null && trim($search) !== '') {
+            $where[] = '(s.invoice_number LIKE ? OR s.customer_name LIKE ? OR u.full_name LIKE ?)';
+            $term = '%' . trim($search) . '%';
+            array_push($params, $term, $term, $term);
+        }
+        if ($from) { $where[] = 's.created_at >= ?'; $params[] = $from . ' 00:00:00'; }
+        if ($to) { $where[] = 's.created_at < DATE_ADD(?, INTERVAL 1 DAY)'; $params[] = $to; }
+        if (in_array($status, ['paid', 'partial', 'void'], true)) { $where[] = 's.status = ?'; $params[] = $status; }
+        $query = "SELECT s.*, u.full_name, v.id voucher_id FROM sales s JOIN users u ON u.id = s.operator_id LEFT JOIN vouchers v ON v.voucher_type = 'sale' AND v.reference_id = s.id WHERE " . implode(' AND ', $where) . ' ORDER BY s.id DESC';
+        $statement = $this->db->prepare($query);
+        $statement->execute($params);
+        return $statement->fetchAll();
     }
 
     public function heldBills(int $userId): array
@@ -103,7 +121,30 @@ final class ModuleService
         return $this->db->query("SELECT p.*, v.name vendor_name, v.service_type, u.full_name FROM utility_payments p JOIN utility_vendors v ON v.id = p.vendor_id JOIN users u ON u.id = p.user_id ORDER BY p.id DESC LIMIT 50")->fetchAll();
     }
 
-    public function voucherByNumber(string $number): ?array { $statement = $this->db->prepare('SELECT v.*, u.full_name FROM vouchers v JOIN users u ON u.id = v.created_by WHERE v.voucher_number = ?'); $statement->execute([trim($number)]); return $statement->fetch() ?: null; }
+    public function voucherByNumber(string $number): ?array
+    {
+        $number = trim($number);
+        $statement = $this->db->prepare('SELECT v.*, u.full_name FROM vouchers v JOIN users u ON u.id = v.created_by WHERE v.voucher_number = ? LIMIT 1');
+        $statement->execute([$number]);
+        $voucher = $statement->fetch();
+        if ($voucher) return $voucher;
+
+        if (ctype_digit($number)) {
+            $statement = $this->db->prepare("SELECT v.*, u.full_name FROM vouchers v JOIN users u ON u.id = v.created_by WHERE v.id = ? AND v.voucher_type IN ('sale', 'purchase') LIMIT 1");
+            $statement->execute([(int) $number]);
+            $voucher = $statement->fetch();
+            if ($voucher) return $voucher;
+        }
+
+        $statement = $this->db->prepare("SELECT v.*, u.full_name FROM vouchers v JOIN sales s ON v.voucher_type = 'sale' AND v.reference_id = s.id JOIN users u ON u.id = v.created_by WHERE s.invoice_number = ? LIMIT 1");
+        $statement->execute([$number]);
+        $voucher = $statement->fetch();
+        if ($voucher) return $voucher;
+
+        $statement = $this->db->prepare("SELECT v.*, u.full_name FROM vouchers v JOIN purchase_orders po ON v.voucher_type = 'purchase' AND v.reference_id = po.id JOIN users u ON u.id = v.created_by WHERE po.order_number = ? LIMIT 1");
+        $statement->execute([$number]);
+        return $statement->fetch() ?: null;
+    }
     public function returnSource(string $number): array
     {
         $voucher = $this->voucherByNumber($number);
@@ -141,11 +182,43 @@ final class ModuleService
     {
         $profile = $this->db->prepare('SELECT u.full_name, sp.monthly_salary, sp.allowance FROM employee_salary_profiles sp JOIN users u ON u.id = sp.user_id WHERE sp.user_id = ? AND sp.is_active = 1'); $profile->execute([(int) $input['user_id']]); $employee = $profile->fetch(); if (!$employee) throw new RuntimeException('Set an active salary profile before paying this employee.');
         $base = (float) $employee['monthly_salary']; $allowance = (float) $employee['allowance']; $deductions = max(0, (float) $input['deductions']); $net = max(0, $base + $allowance - $deductions); $month = $input['salary_month'] . '-01';
+        $existing = $this->db->prepare('SELECT paid_at FROM salary_payments WHERE user_id = ? AND salary_month = ? LIMIT 1');
+        $existing->execute([(int) $input['user_id'], $month]);
+        if ($existing->fetchColumn()) { throw new RuntimeException($employee['full_name'] . ' has already been paid for ' . date('F Y', strtotime($month)) . '.'); }
         $this->db->beginTransaction();
-        try { $this->db->prepare('INSERT INTO salary_payments (user_id, salary_month, base_salary, allowance, deductions, net_amount, payment_method, paid_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?)')->execute([(int) $input['user_id'], $month, $base, $allowance, $deductions, $net, $input['payment_method'], $paidBy]); $paymentId = (int) $this->db->lastInsertId(); $this->db->prepare('INSERT INTO expenses (user_id, category, description, amount, expense_date) VALUES (?, ?, ?, ?, CURDATE())')->execute([$paidBy, 'Salary', 'Salary payment - ' . $employee['full_name'] . ' - ' . $input['salary_month'], $net]); $voucherId = $this->createVoucher('salary', $paymentId, $net, $paidBy, ['employee' => $employee['full_name'], 'salary_month' => $input['salary_month'], 'base_salary' => $base, 'allowance' => $allowance, 'deductions' => $deductions, 'payment_method' => $input['payment_method']]); $this->db->commit(); return (string) $voucherId; } catch (Throwable $error) { $this->db->rollBack(); throw $error; }
+        try {
+            $this->db->prepare('INSERT INTO salary_payments (user_id, salary_month, base_salary, allowance, deductions, net_amount, payment_method, paid_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?)')->execute([(int) $input['user_id'], $month, $base, $allowance, $deductions, $net, $input['payment_method'], $paidBy]);
+            $paymentId = (int) $this->db->lastInsertId();
+            $this->db->prepare('INSERT INTO expenses (user_id, category, description, amount, expense_date) VALUES (?, ?, ?, ?, CURDATE())')->execute([$paidBy, 'Salary', 'Salary payment - ' . $employee['full_name'] . ' - ' . $input['salary_month'], $net]);
+            $voucherId = $this->createVoucher('salary', $paymentId, $net, $paidBy, ['employee' => $employee['full_name'], 'salary_month' => $input['salary_month'], 'base_salary' => $base, 'allowance' => $allowance, 'deductions' => $deductions, 'payment_method' => $input['payment_method']]);
+            $this->db->commit();
+            return (string) $voucherId;
+        } catch (PDOException $error) {
+            $this->db->rollBack();
+            if ($error->getCode() === '23000') { throw new RuntimeException($employee['full_name'] . ' has already been paid for ' . date('F Y', strtotime($month)) . '.'); }
+            throw $error;
+        } catch (Throwable $error) { $this->db->rollBack(); throw $error; }
     }
 
-    public function voucher(int $id): ?array { $statement = $this->db->prepare('SELECT v.*, u.full_name FROM vouchers v JOIN users u ON u.id = v.created_by WHERE v.id = ?'); $statement->execute([$id]); $voucher = $statement->fetch(); if (!$voucher) return null; $voucher['payload'] = json_decode($voucher['payload'], true, 512, JSON_THROW_ON_ERROR); return $voucher; }
+    public function voucher(int $id): ?array
+    {
+        $statement = $this->db->prepare('SELECT v.*, u.full_name FROM vouchers v JOIN users u ON u.id = v.created_by WHERE v.id = ?');
+        $statement->execute([$id]);
+        $voucher = $statement->fetch();
+        if (!$voucher) return null;
+        $voucher['payload'] = json_decode($voucher['payload'], true, 512, JSON_THROW_ON_ERROR);
+        $voucher['details'] = [];
+        if ($voucher['voucher_type'] === 'sale') {
+            $statement = $this->db->prepare('SELECT invoice_number, customer_name, subtotal, discount, total, paid_amount, payment_method, status FROM sales WHERE id = ?');
+            $statement->execute([(int) $voucher['reference_id']]);
+            $voucher['details'] = $statement->fetch() ?: [];
+        } elseif ($voucher['voucher_type'] === 'purchase') {
+            $statement = $this->db->prepare('SELECT po.order_number, s.name supplier_name, po.subtotal, po.discount, po.total, po.paid_amount, po.payment_method, po.payment_reference, po.status FROM purchase_orders po JOIN suppliers s ON s.id = po.supplier_id WHERE po.id = ?');
+            $statement->execute([(int) $voucher['reference_id']]);
+            $voucher['details'] = $statement->fetch() ?: [];
+        }
+        return $voucher;
+    }
 
     public function report(?string $startDate = null, ?string $endDate = null): array
     {
@@ -197,14 +270,14 @@ final class ModuleService
 
     public function saveProduct(array $input): void
     {
-        $statement = $this->db->prepare('INSERT INTO products (category_id, supplier_id, sku, barcode, name, unit, buying_price, selling_price, stock_quantity, low_stock_threshold) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
-        $statement->execute([(int) $input['category_id'], !empty($input['supplier_id']) ? (int) $input['supplier_id'] : null, trim($input['sku']), trim($input['barcode'] ?? '') ?: null, trim($input['name']), trim($input['unit'] ?: 'piece'), (float) $input['buying_price'], (float) $input['selling_price'], (float) $input['stock_quantity'], (float) $input['low_stock_threshold']]);
+        $statement = $this->db->prepare('INSERT INTO products (category_id, supplier_id, sku, barcode, name, description, unit, buying_price, selling_price, stock_quantity, low_stock_threshold) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
+        $statement->execute([(int) $input['category_id'], !empty($input['supplier_id']) ? (int) $input['supplier_id'] : null, trim($input['sku']), trim($input['barcode'] ?? '') ?: null, trim($input['name']), trim($input['description'] ?? '') ?: null, trim($input['unit'] ?: 'piece'), (float) $input['buying_price'], (float) $input['selling_price'], (float) $input['stock_quantity'], (float) $input['low_stock_threshold']]);
     }
 
     public function updateProduct(array $input): void
     {
-        $statement = $this->db->prepare('UPDATE products SET category_id = ?, supplier_id = ?, sku = ?, barcode = ?, name = ?, unit = ?, buying_price = ?, selling_price = ?, stock_quantity = stock_quantity + ?, low_stock_threshold = ? WHERE id = ?');
-        $statement->execute([(int) $input['category_id'], !empty($input['supplier_id']) ? (int) $input['supplier_id'] : null, trim($input['sku']), trim($input['barcode'] ?? '') ?: null, trim($input['name']), trim($input['unit'] ?: 'piece'), (float) $input['buying_price'], (float) $input['selling_price'], (float) ($input['stock_adjustment'] ?? 0), (float) $input['low_stock_threshold'], (int) $input['product_id']]);
+        $statement = $this->db->prepare('UPDATE products SET category_id = ?, supplier_id = ?, sku = ?, barcode = ?, name = ?, description = ?, unit = ?, buying_price = ?, selling_price = ?, stock_quantity = stock_quantity + ?, low_stock_threshold = ? WHERE id = ?');
+        $statement->execute([(int) $input['category_id'], !empty($input['supplier_id']) ? (int) $input['supplier_id'] : null, trim($input['sku']), trim($input['barcode'] ?? '') ?: null, trim($input['name']), trim($input['description'] ?? '') ?: null, trim($input['unit'] ?: 'piece'), (float) $input['buying_price'], (float) $input['selling_price'], (float) ($input['stock_adjustment'] ?? 0), (float) $input['low_stock_threshold'], (int) $input['product_id']]);
     }
 
     public function product(int $id): ?array
@@ -220,21 +293,32 @@ final class ModuleService
         $this->db->beginTransaction();
         try {
             $subtotal = 0; $normalized = [];
+            $requested = [];
             foreach ($items as $item) {
-                $product = $this->product((int) $item['product_id']);
-                $quantity = (float) $item['quantity'];
-                if (!$product || $quantity <= 0 || (float) $product['stock_quantity'] < $quantity) { throw new RuntimeException('One product has insufficient stock.'); }
-                $total = $quantity * (float) $product['selling_price']; $subtotal += $total;
+                $productId = (int) ($item['product_id'] ?? 0);
+                $quantity = (float) ($item['quantity'] ?? 0);
+                if ($productId <= 0 || $quantity <= 0) { throw new RuntimeException('Every cart item must have a valid product and quantity.'); }
+                $requested[$productId] = ($requested[$productId] ?? 0) + $quantity;
+            }
+            foreach ($requested as $productId => $quantity) {
+                $product = $this->product($productId);
+                if (!$product) { throw new RuntimeException('One cart item refers to a product that no longer exists.'); }
+                if ((float) $product['stock_quantity'] < $quantity) { throw new RuntimeException($product['name'] . ' has only ' . number_format((float) $product['stock_quantity'], 3) . ' in stock, but the cart requests ' . number_format($quantity, 3) . '.'); }
+                $total = $quantity * (float) $product['selling_price'];
+                $subtotal += $total;
                 $normalized[] = [$product, $quantity, $total];
             }
-            $discount = max(0, (float) ($input['discount'] ?? 0)); $total = max(0, $subtotal - $discount); $invoice = 'INV-' . date('YmdHis') . '-' . random_int(10, 99);
+            $discount = min($subtotal, max(0, (float) ($input['discount'] ?? 0))); $total = max(0, $subtotal - $discount); $invoice = 'INV-' . date('YmdHis') . '-' . random_int(10, 99);
+            $paidAmount = max(0, (float) ($input['paid_amount'] ?? $total));
+            $changeAmount = max(0, $paidAmount - $total);
+            $balanceDue = max(0, $total - $paidAmount);
             $sale = $this->db->prepare('INSERT INTO sales (invoice_number, customer_name, operator_id, subtotal, discount, total, paid_amount, payment_method, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)');
-            $sale->execute([$invoice, trim($input['customer_name'] ?? '') ?: null, $userId, $subtotal, $discount, $total, (float) ($input['paid_amount'] ?? $total), $input['payment_method'] ?? 'cash', 'paid']);
+            $sale->execute([$invoice, trim($input['customer_name'] ?? '') ?: null, $userId, $subtotal, $discount, $total, $paidAmount, $input['payment_method'] ?? 'cash', $balanceDue > 0 ? 'partial' : 'paid']);
             $saleId = (int) $this->db->lastInsertId();
             $line = $this->db->prepare('INSERT INTO sale_items (sale_id, product_id, quantity, unit_price, unit_cost, total) VALUES (?, ?, ?, ?, ?, ?)');
             $stock = $this->db->prepare('UPDATE products SET stock_quantity = stock_quantity - ? WHERE id = ?');
             foreach ($normalized as [$product, $quantity, $lineTotal]) { $line->execute([$saleId, $product['id'], $quantity, $product['selling_price'], $product['buying_price'], $lineTotal]); $stock->execute([$quantity, $product['id']]); }
-            $voucherId = $this->createVoucher('sale', $saleId, $total, $userId, ['invoice' => $invoice, 'customer' => $input['customer_name'] ?? 'Walk-in customer', 'items' => $normalized, 'payment_method' => $input['payment_method'] ?? 'cash']);
+            $voucherId = $this->createVoucher('sale', $saleId, $total, $userId, ['invoice' => $invoice, 'customer' => $input['customer_name'] ?? 'Walk-in customer', 'items' => $normalized, 'subtotal' => $subtotal, 'discount' => $discount, 'total' => $total, 'paid_amount' => $paidAmount, 'change_amount' => $changeAmount, 'balance_due' => $balanceDue, 'payment_method' => $input['payment_method'] ?? 'cash']);
             if (!empty($input['hold_id'])) { $this->db->prepare('DELETE FROM pos_held_bills WHERE id = ? AND user_id = ?')->execute([(int) $input['hold_id'], $userId]); }
             $this->db->commit(); return (string) $voucherId;
         } catch (Throwable $error) { $this->db->rollBack(); throw $error; }
@@ -242,10 +326,46 @@ final class ModuleService
 
     public function savePurchase(array $input, int $userId): string
     {
-        $product = $this->product((int) $input['product_id']); $quantity = (float) $input['quantity']; $cost = (float) $input['unit_cost'];
-        if (!$product || $quantity <= 0) { throw new RuntimeException('Select a valid product and quantity.'); }
+        $items = $input['items'] ?? [[
+            'product_id' => $input['product_id'] ?? 0,
+            'quantity' => $input['quantity'] ?? 0,
+            'unit_cost' => $input['unit_cost'] ?? 0,
+        ]];
+        if (!is_array($items) || !$items) { throw new RuntimeException('Add at least one product to the purchase.'); }
+        $normalized = [];
+        foreach ($items as $item) {
+            $product = $this->product((int) ($item['product_id'] ?? 0));
+            $quantity = (float) ($item['quantity'] ?? 0);
+            $cost = (float) ($item['unit_cost'] ?? 0);
+            $gross = $quantity * $cost;
+            $discount = max(0, (float) ($item['discount'] ?? 0));
+            if (!$product || $quantity <= 0 || $cost < 0 || $discount > $gross) { throw new RuntimeException('Each purchase row needs a valid product, quantity, unit cost, and discount not exceeding its line value.'); }
+            $normalized[] = ['product' => $product, 'quantity' => $quantity, 'cost' => $cost, 'discount' => $discount, 'gross' => $gross, 'total' => $gross - $discount];
+        }
+        $subtotal = array_sum(array_column($normalized, 'gross'));
+        $discountTotal = array_sum(array_column($normalized, 'discount'));
+        $total = array_sum(array_column($normalized, 'total'));
+        $paidAmount = max(0, (float) ($input['paid_amount'] ?? 0));
+        if ($paidAmount > $total) { throw new RuntimeException('Payment cannot exceed the discounted purchase total.'); }
         $this->db->beginTransaction();
-        try { $number = 'PO-' . date('YmdHis') . '-' . random_int(10, 99); $total = $quantity * $cost; $po = $this->db->prepare("INSERT INTO purchase_orders (supplier_id, created_by, order_number, status, subtotal, total, ordered_at, received_at) VALUES (?, ?, ?, 'received', ?, ?, NOW(), NOW())"); $po->execute([(int) $input['supplier_id'], $userId, $number, $total, $total]); $id = $this->db->lastInsertId(); $this->db->prepare('INSERT INTO purchase_order_items (purchase_order_id, product_id, quantity, received_quantity, unit_cost) VALUES (?, ?, ?, ?, ?)')->execute([$id, $product['id'], $quantity, $quantity, $cost]); $this->db->prepare('UPDATE products SET stock_quantity = stock_quantity + ?, buying_price = ? WHERE id = ?')->execute([$quantity, $cost, $product['id']]); $voucherId = $this->createVoucher('purchase', (int) $id, $total, $userId, ['order_number' => $number, 'quantity' => $quantity, 'product' => $product['name'], 'unit_cost' => $cost]); $this->db->commit(); return (string) $voucherId; } catch (Throwable $error) { $this->db->rollBack(); throw $error; }
+        try {
+            $number = 'PO-' . date('YmdHis') . '-' . random_int(10, 99);
+            $po = $this->db->prepare("INSERT INTO purchase_orders (supplier_id, created_by, order_number, status, subtotal, discount, total, paid_amount, payment_method, payment_reference, paid_at, ordered_at, received_at) VALUES (?, ?, ?, 'received', ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())");
+            $po->execute([(int) $input['supplier_id'], $userId, $number, $subtotal, $discountTotal, $total, $paidAmount, $input['payment_method'] ?? 'cash', trim($input['payment_reference'] ?? '') ?: null, $paidAmount > 0 ? date('Y-m-d H:i:s') : null]);
+            $purchaseId = (int) $this->db->lastInsertId();
+            $line = $this->db->prepare('INSERT INTO purchase_order_items (purchase_order_id, product_id, quantity, received_quantity, unit_cost, discount) VALUES (?, ?, ?, ?, ?, ?)');
+            $stock = $this->db->prepare('UPDATE products SET stock_quantity = stock_quantity + ?, buying_price = ? WHERE id = ?');
+            $voucherItems = [];
+            foreach ($normalized as $item) {
+                $product = $item['product'];
+                $line->execute([$purchaseId, $product['id'], $item['quantity'], $item['quantity'], $item['cost'], $item['discount']]);
+                $stock->execute([$item['quantity'], $item['cost'], $product['id']]);
+                $voucherItems[] = ['product' => $product['name'], 'quantity' => $item['quantity'], 'unit_cost' => $item['cost'], 'discount' => $item['discount'], 'total' => $item['total']];
+            }
+            $voucherId = $this->createVoucher('purchase', $purchaseId, $total, $userId, ['order_number' => $number, 'items' => $voucherItems, 'subtotal' => $subtotal, 'discount' => $discountTotal, 'paid_amount' => $paidAmount, 'payment_method' => $input['payment_method'] ?? 'cash', 'payment_reference' => $input['payment_reference'] ?? '']);
+            $this->db->commit();
+            return (string) $voucherId;
+        } catch (Throwable $error) { $this->db->rollBack(); throw $error; }
     }
 
     public function saveService(array $input, int $userId): string { $this->db->prepare('INSERT INTO operator_work_logs (operator_id, service_type_id, customer_name, customer_phone, task_description, fee, payment_method) VALUES (?, ?, ?, ?, ?, ?, ?)')->execute([$userId, (int) $input['service_type_id'], trim($input['customer_name'] ?? '') ?: null, trim($input['customer_phone'] ?? '') ?: null, trim($input['task_description']), (float) $input['fee'], $input['payment_method'] ?? 'cash']); $id = (int) $this->db->lastInsertId(); return (string) $this->createVoucher('service', $id, (float) $input['fee'], $userId, ['customer' => $input['customer_name'] ?? 'Walk-in customer', 'description' => $input['task_description'], 'payment_method' => $input['payment_method'] ?? 'cash']); }

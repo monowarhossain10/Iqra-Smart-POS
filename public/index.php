@@ -14,7 +14,7 @@ if ($route === 'logout') {
     redirect('');
 }
 
-$moduleRoutes = ['pos', 'inventory', 'purchases', 'services', 'mfs', 'utility', 'utf', 'reports', 'returns', 'salaries', 'income', 'expenses', 'users'];
+$moduleRoutes = ['pos', 'sales', 'inventory', 'purchases', 'services', 'mfs', 'utility', 'utf', 'reports', 'returns', 'salaries', 'income', 'expenses', 'users'];
 
 $loginError = null;
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && $route === 'login') {

@@ -112,6 +112,10 @@
                             <label style="display: block; font-size: 0.875rem; font-weight: 600; color: #334155; margin-bottom: 6px;">Product name</label>
                             <input style="width: 100%; padding: 10px 14px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 0.9rem; outline: none; box-sizing: border-box;" name="name" required placeholder="e.g. Premium ball pen" value="<?= e($editProduct['name'] ?? '') ?>">
                         </div>
+                        <div style="grid-column: span 2;">
+                            <label style="display: block; font-size: 0.875rem; font-weight: 600; color: #334155; margin-bottom: 6px;">Description</label>
+                            <textarea style="width: 100%; min-height: 78px; padding: 10px 14px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 0.9rem; outline: none; box-sizing: border-box; resize: vertical;" name="description" maxlength="500" placeholder="Brand, size, color, material, or other product details"><?= e($editProduct['description'] ?? '') ?></textarea>
+                        </div>
                         <div style="grid-column: span 1;">
                             <label style="display: block; font-size: 0.875rem; font-weight: 600; color: #334155; margin-bottom: 6px;">SKU</label>
                             <input style="width: 100%; padding: 10px 14px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 0.9rem; outline: none; box-sizing: border-box;" name="sku" required placeholder="PEN-001" value="<?= e($editProduct['sku'] ?? '') ?>">
@@ -153,11 +157,7 @@
                         <?php if (!empty($editProduct)): ?>
                             <div style="grid-column: span 2;">
                                 <label style="display: block; font-size: 0.875rem; font-weight: 600; color: #334155; margin-bottom: 6px;">Stock adjustment</label>
-                                <div style="display: flex; gap: 6px;">
-                                    <input id="productBarcode" style="min-width: 0; flex: 1; padding: 10px 14px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 0.9rem; outline: none; box-sizing: border-box;" name="barcode" placeholder="Editable barcode" value="<?= e($editProduct['barcode'] ?? '') ?>">
-                                    <button type="button" class="generate-barcode btn btn-outline-secondary" data-target="#productBarcode" title="Generate barcode"><i class="fa-solid fa-wand-magic-sparkles"></i></button>
-                                </div>
-                                <small style="display: block; margin-top: 4px; color: #64748b;">Generate once, then edit freely before saving.</small>
+                                <input style="width: 100%; padding: 10px 14px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 0.9rem; outline: none; box-sizing: border-box;" name="stock_adjustment" type="number" step=".001" value="0" placeholder="+/- adjustment">
                             </div>
                         <?php else: ?>
                             <div style="grid-column: span 2;">
@@ -212,7 +212,7 @@
                                 <?php else: ?>
                                     <?php foreach ($products as $product): ?>
                                         <tr style="border-bottom: 1px solid #f1f5f9; transition: background 0.2s;">
-                                            <td style="padding: 12px;"><strong style="color: #1e293b;"><?= e($product['name']) ?></strong></td>
+                                            <td style="padding: 12px;"><strong style="color: #1e293b;"><?= e($product['name']) ?></strong><?php if (!empty($product['description'])): ?><small style="display: block; color: #64748b; max-width: 220px;"><?= e($product['description']) ?></small><?php endif; ?></td>
                                             <td style="padding: 12px; color: #64748b;"><?= e($product['sku']) ?></td>
                                             <td style="padding: 12px; color: #475569;"><?= e($product['category_name'] ?? 'Uncategorized') ?></td>
                                             <td style="padding: 12px;">

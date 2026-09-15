@@ -4,7 +4,7 @@ declare(strict_types=1);
 final class ModuleController
 {
     private array $permissions = [
-        'pos' => 'process_sales', 'inventory' => 'manage_products', 'purchases' => 'manage_purchases',
+        'pos' => 'process_sales', 'sales' => 'process_sales', 'inventory' => 'manage_products', 'purchases' => 'manage_purchases',
         'services' => 'manage_services', 'mfs' => 'manage_mfs', 'utility' => 'manage_utility', 'utf' => 'manage_utility', 'reports' => 'view_financials',
         'returns' => 'view_financials', 'salaries' => 'view_financials', 'income' => 'view_financials', 'expenses' => 'view_financials',
         'users' => 'manage_users',
@@ -66,7 +66,9 @@ final class ModuleController
                 if (($_POST['action'] ?? '') === 'hold') { $service->holdBill($_POST, $items, $userId); return null; }
                 if (($_POST['action'] ?? '') === 'delete_hold') { $service->deleteHeldBill((int) ($_POST['hold_id'] ?? 0), $userId); return null; }
                 return (int) $service->saveSale($_POST, $items, $userId);
-            case 'purchases': return $_POST['action'] === 'supplier' ? null : (int) $service->savePurchase($_POST, $userId);
+            case 'purchases':
+                if (($_POST['action'] ?? '') === 'supplier') { $service->saveSupplier($_POST); return null; }
+                return (int) $service->savePurchase($_POST, $userId);
             case 'services': return (int) $service->saveService($_POST, $userId);
             case 'utility':
             case 'utf': return (int) $service->saveUtility($_POST, $userId);
@@ -95,18 +97,33 @@ final class ModuleController
         return match ($page) {
             'inventory' => ['products' => $service->products(), 'categories' => $service->categories(), 'suppliers' => $service->suppliers(), 'editProduct' => !empty($_GET['edit']) ? $service->product((int) $_GET['edit']) : null],
             'pos' => ['products' => $service->products(), 'sales' => $service->sales(), 'heldBills' => $service->heldBills((int) Auth::user()['id']), 'resumeHold' => !empty($_GET['resume_hold']) ? $service->heldBill((int) $_GET['resume_hold'], (int) Auth::user()['id']) : null],
+            'sales' => ['sales' => $service->sales($_GET['search'] ?? null, $_GET['from'] ?? null, $_GET['to'] ?? null, $_GET['status'] ?? null)],
             'purchases' => ['products' => $service->products(), 'suppliers' => $service->suppliers(), 'purchases' => $service->purchases()],
             'services' => ['services' => $service->services(), 'logs' => $service->workLogs()],
             'mfs' => ['accounts' => $service->accounts(), 'transactions' => $service->mfsTransactions(), 'dailyAccounts' => $service->mfsDailySummary(date('Y-m-d')), 'reconciliations' => $service->mfsReconciliations()],
             'utility' => ['vendors' => $service->utilityVendors(), 'payments' => $service->utilityPayments()],
             'utf' => ['vendors' => $service->utilityVendors(), 'payments' => $service->utilityPayments()],
             'reports' => ['report' => $service->report($_GET['start_date'] ?? null, $_GET['end_date'] ?? null)],
-            'returns' => ['returns' => $service->returns(), 'source' => !empty($_GET['voucher']) ? $service->returnSource((string) $_GET['voucher']) : null],
+            'returns' => $this->returnsData($service),
             'salaries' => ['employees' => $service->usersWithSalaries(), 'payments' => $service->salaryPayments()],
             'income' => ['incomeRecords' => $service->incomeRecords()],
             'expenses' => ['expenseRecords' => $service->expenseRecords()],
             'users' => ['users' => $service->users(), 'roles' => $service->roles(), 'editUser' => !empty($_GET['edit']) ? $service->user((int) $_GET['edit']) : null],
             default => [],
         };
+    }
+
+    private function returnsData(ModuleService $service): array
+    {
+        $data = ['returns' => $service->returns(), 'source' => null, 'returnError' => null];
+        $voucherNumber = trim((string) ($_GET['voucher'] ?? ''));
+        if ($voucherNumber === '') return $data;
+
+        try {
+            $data['source'] = $service->returnSource($voucherNumber);
+        } catch (RuntimeException $exception) {
+            $data['returnError'] = $exception->getMessage();
+        }
+        return $data;
     }
 }

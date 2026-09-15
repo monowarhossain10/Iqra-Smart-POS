@@ -60,19 +60,31 @@ document.addEventListener('DOMContentLoaded', () => {
   const discount = document.querySelector('#saleDiscount');
   const paidAmount = document.querySelector('#paidAmount');
   const changeDue = document.querySelector('#changeDue');
+  const changeLabel = document.querySelector('#changeLabel');
   const initialCart = cartItems ? JSON.parse(cartItems.dataset.initialCart || '[]') : [];
-  initialCart.forEach(item => cart.push(item));
+  initialCart.forEach(item => {
+    const productId = Number(item.product_id ?? item.id ?? 0);
+    const quantity = Number(item.quantity ?? 0);
+    if (productId > 0 && quantity > 0) cart.push({ ...item, id: productId, quantity });
+  });
   const renderCart = () => {
     if (!cartItems) return;
     const subtotal = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
     const discountAmount = Math.min(subtotal, Math.max(0, Number(discount?.value || 0)));
     const total = Math.max(0, subtotal - discountAmount);
     cartCount.textContent = cart.reduce((sum, item) => sum + item.quantity, 0);
-    cartInput.value = JSON.stringify(cart.map(item => ({ product_id: item.id, quantity: item.quantity })));
+    cartInput.value = JSON.stringify(cart.map(item => ({ product_id: Number(item.id ?? item.product_id), quantity: item.quantity })));
     if (cartSubtotal) cartSubtotal.textContent = `৳ ${subtotal.toFixed(2)}`;
     if (cartDiscount) cartDiscount.textContent = `৳ ${discountAmount.toFixed(2)}`;
     cartTotal.textContent = `৳ ${total.toFixed(2)}`;
-    if (paidAmount && changeDue) changeDue.textContent = `৳ ${Math.max(0, Number(paidAmount.value || 0) - total).toFixed(2)}`;
+    if (paidAmount && changeDue) {
+      const received = Math.max(0, Number(paidAmount.value || 0));
+      const difference = received - total;
+      changeDue.textContent = `৳ ${Math.abs(difference).toFixed(2)}`;
+      if (changeLabel) changeLabel.textContent = difference >= 0 ? 'Change to return' : 'Balance due';
+      changeDue.classList.toggle('text-danger', difference < 0);
+      changeDue.classList.toggle('text-success', difference >= 0);
+    }
     cartItems.innerHTML = cart.length ? cart.map((item, index) => `<div class="cart-row"><span><strong>${escapeHtml(item.name)}</strong><small>${escapeHtml(item.sku)} · ৳ ${item.price.toFixed(2)}</small></span><span class="qty-control"><button type="button" data-cart-action="minus" data-cart-index="${index}">−</button><span>${item.quantity}</span><button type="button" data-cart-action="plus" data-cart-index="${index}">+</button></span><strong>৳ ${(item.price * item.quantity).toFixed(2)}</strong></div>`).join('') : '<div class="empty-state compact"><i class="fa-solid fa-basket-shopping"></i><br>Select an item to begin</div>';
   };
   document.querySelectorAll('.product-tile').forEach(tile => tile.addEventListener('click', () => {
@@ -121,6 +133,65 @@ document.addEventListener('DOMContentLoaded', () => {
     target.select();
   }));
 
+  const purchaseItems = document.querySelector('#purchaseItems');
+  const addPurchaseRow = document.querySelector('#addPurchaseRow');
+  const updatePurchaseTotals = () => {
+    let gross = 0;
+    let discounts = 0;
+    purchaseItems?.querySelectorAll('.purchase-item-row').forEach(row => {
+      const quantity = Number(row.querySelector('[name$="[quantity]"]')?.value || 0);
+      const cost = Number(row.querySelector('[name$="[unit_cost]"]')?.value || 0);
+      const discountValue = Math.max(0, Number(row.querySelector('[name$="[discount]"]')?.value || 0));
+      const lineGross = quantity * cost;
+      gross += lineGross;
+      discounts += Math.min(lineGross, discountValue);
+    });
+    const total = Math.max(0, gross - discounts);
+    const paid = Math.max(0, Number(document.querySelector('#purchasePaidAmount')?.value || 0));
+    const setText = (selector, value) => { const element = document.querySelector(selector); if (element) element.textContent = `৳ ${value.toFixed(2)}`; };
+    setText('#purchaseGrossTotal', gross);
+    setText('#purchaseDiscountTotal', discounts);
+    setText('#purchaseNetTotal', total);
+    setText('#purchaseBalanceDue', Math.max(0, total - paid));
+  };
+  addPurchaseRow?.addEventListener('click', () => {
+    const rows = purchaseItems?.querySelectorAll('.purchase-item-row');
+    const template = rows?.[0];
+    if (!purchaseItems || !template) return;
+    const index = rows.length;
+    const row = template.cloneNode(true);
+    row.querySelectorAll('[name]').forEach(input => { input.name = input.name.replace(/items\[\d+\]/, `items[${index}]`); if (input.tagName === 'SELECT') input.selectedIndex = 0; else input.value = input.name.endsWith('[discount]') ? '0' : ''; });
+    const productSelect = row.querySelector('.purchase-product-select');
+    if (productSelect) productSelect.id = `purchaseProduct${index}`;
+    row.querySelector('.remove-purchase-row')?.removeAttribute('disabled');
+    purchaseItems.appendChild(row);
+    updatePurchaseTotals();
+  });
+  purchaseItems?.addEventListener('input', updatePurchaseTotals);
+  purchaseItems?.addEventListener('input', event => {
+    const search = event.target.closest('.purchase-product-search');
+    if (!search) return;
+    const select = search.closest('.purchase-item-row')?.querySelector('.purchase-product-select');
+    if (!select) return;
+    const query = search.value.trim().toLowerCase();
+    let visibleCount = 0;
+    select.querySelectorAll('option').forEach(option => {
+      const matches = !query || option.textContent.toLowerCase().includes(query);
+      option.hidden = !matches;
+      if (matches) visibleCount += 1;
+    });
+    const firstVisible = Array.from(select.options).find(option => !option.hidden);
+    if (query && firstVisible && visibleCount === 1) select.value = firstVisible.value;
+  });
+  purchaseItems?.addEventListener('click', event => {
+    const removeButton = event.target.closest('.remove-purchase-row');
+    if (!removeButton || purchaseItems.querySelectorAll('.purchase-item-row').length <= 1) return;
+    removeButton.closest('.purchase-item-row')?.remove();
+    updatePurchaseTotals();
+  });
+  document.querySelector('#purchasePaidAmount')?.addEventListener('input', updatePurchaseTotals);
+  updatePurchaseTotals();
+
   document.querySelectorAll('.print-product-labels').forEach(button => button.addEventListener('click', () => {
     const product = JSON.parse(button.dataset.labelProduct);
     const quantity = Math.max(1, Math.min(100, Number(window.prompt('How many labels should be printed?', '1')) || 1));
@@ -141,6 +212,7 @@ function ensureNavigation() {
   const links = [
     ['dashboard', 'Overview', 'fa-grid-2', window.IQRA_APP_URL],
     ['pos', 'Point of sale', 'fa-cash-register', '?route=pos'],
+    ['sales', 'Recent sales', 'fa-receipt', '?route=sales'],
     ['inventory', 'Inventory', 'fa-boxes-stacked', '?route=inventory'],
     ['purchases', 'Purchases', 'fa-truck-field', '?route=purchases'],
     ['services', 'Service billing', 'fa-print', '?route=services'],

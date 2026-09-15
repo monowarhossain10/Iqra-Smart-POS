@@ -81,6 +81,9 @@
             </header>
 
             <!-- Alerts -->
+            <?php if (!empty($returnError)): ?>
+                <div class="alert alert-danger module-alert" style="background: #fef2f2; border: 1px solid #fecaca; color: #dc2626; padding: 12px 16px; border-radius: 8px; margin-bottom: 20px; font-size: 0.9rem;"><?= e($returnError) ?></div>
+            <?php endif; ?>
             <?php if ($error): ?>
                 <div class="alert alert-danger module-alert" style="background: #fef2f2; border: 1px solid #fecaca; color: #dc2626; padding: 12px 16px; border-radius: 8px; margin-bottom: 20px; font-size: 0.9rem;"><?= e($error) ?></div>
             <?php elseif ($flash): ?>
@@ -101,8 +104,8 @@
                     <form method="get" class="row g-3" style="display: flex; flex-direction: column; gap: 15px;">
                         <input type="hidden" name="route" value="returns">
                         <div class="col-12">
-                            <label class="form-label" style="font-size: 0.85rem; font-weight: 600; color: #475569; display: block; margin-bottom: 6px;">Sales or purchase voucher number</label>
-                            <input class="form-control" name="voucher" value="<?= e($_GET['voucher'] ?? '') ?>" placeholder="SALE-20260910... or PURCHASE-..." required style="width: 100%; padding: 10px 14px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 0.95rem; outline: none; box-sizing: border-box;">
+                            <label class="form-label" style="font-size: 0.85rem; font-weight: 600; color: #475569; display: block; margin-bottom: 6px;">Sales invoice, purchase order, or voucher number</label>
+                            <input class="form-control" name="voucher" value="<?= e($_GET['voucher'] ?? '') ?>" placeholder="INV-..., PO-..., SALE-..., or PURCHASE-..." required style="width: 100%; padding: 10px 14px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 0.95rem; outline: none; box-sizing: border-box;">
                         </div>
                         <div class="col-12">
                             <button class="btn btn-primary w-100" style="background: #2563eb; color: white; border: none; padding: 10px 16px; border-radius: 8px; font-size: 0.9rem; font-weight: 600; cursor: pointer; width: 100%; display: inline-flex; align-items: center; justify-content: center; gap: 6px;">

@@ -64,6 +64,7 @@ CREATE TABLE products (
     sku VARCHAR(60) NOT NULL UNIQUE,
     barcode VARCHAR(80) NULL UNIQUE,
     name VARCHAR(180) NOT NULL,
+    description VARCHAR(500) NULL,
     unit VARCHAR(30) NOT NULL DEFAULT 'piece',
     buying_price DECIMAL(12,2) NOT NULL DEFAULT 0,
     selling_price DECIMAL(12,2) NOT NULL DEFAULT 0,
@@ -87,6 +88,10 @@ CREATE TABLE purchase_orders (
     subtotal DECIMAL(12,2) NOT NULL DEFAULT 0,
     discount DECIMAL(12,2) NOT NULL DEFAULT 0,
     total DECIMAL(12,2) NOT NULL DEFAULT 0,
+    paid_amount DECIMAL(12,2) NOT NULL DEFAULT 0,
+    payment_method ENUM('cash','bKash','Nagad','Rocket','card','bank') NOT NULL DEFAULT 'cash',
+    payment_reference VARCHAR(100) NULL,
+    paid_at DATETIME NULL,
     ordered_at DATETIME NULL,
     received_at DATETIME NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -101,7 +106,8 @@ CREATE TABLE purchase_order_items (
     quantity DECIMAL(12,3) NOT NULL,
     received_quantity DECIMAL(12,3) NOT NULL DEFAULT 0,
     unit_cost DECIMAL(12,2) NOT NULL,
-    total DECIMAL(12,2) GENERATED ALWAYS AS (quantity * unit_cost) STORED,
+    discount DECIMAL(12,2) NOT NULL DEFAULT 0,
+    total DECIMAL(12,2) GENERATED ALWAYS AS ((quantity * unit_cost) - discount) STORED,
     CONSTRAINT fk_poi_order FOREIGN KEY (purchase_order_id) REFERENCES purchase_orders(id) ON DELETE CASCADE,
     CONSTRAINT fk_poi_product FOREIGN KEY (product_id) REFERENCES products(id)
 ) ENGINE=InnoDB;

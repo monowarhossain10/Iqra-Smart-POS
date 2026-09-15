@@ -3,6 +3,7 @@ $page ??= 'dashboard';
 $meta = [
     'dashboard' => ['Overview', 'Welcome to your operational workspace', 'fa-grid-2'],
     'pos'       => ['Point of Sale', 'Fast counter checkout & billing', 'fa-cash-register'],
+    'sales'     => ['Recent Sales', 'Review every completed counter transaction', 'fa-receipt'],
     'inventory' => ['Inventory', 'Products and stock control', 'fa-boxes-stacked'],
     'purchases' => ['Purchases', 'Receive stock from suppliers', 'fa-truck-field'],
     'services'  => ['Service Billing', 'Operator work and digital services', 'fa-print'],
@@ -45,6 +46,7 @@ $meta = [
         <nav class="nav flex-column gap-1 px-2">
             <a class="nav-link <?= $page === 'dashboard' ? 'active' : '' ?>" href="<?= e(APP_URL) ?>"><i class="fa-solid fa-grid-2 me-2"></i>Overview</a>
             <a class="nav-link <?= $page === 'pos' ? 'active' : '' ?>" href="?route=pos"><i class="fa-solid fa-cash-register me-2"></i>Point of sale <span class="nav-badge">F2</span></a>
+            <a class="nav-link <?= $page === 'sales' ? 'active' : '' ?>" href="?route=sales"><i class="fa-solid fa-receipt me-2"></i>Recent sales</a>
             <a class="nav-link <?= $page === 'inventory' ? 'active' : '' ?>" href="?route=inventory"><i class="fa-solid fa-boxes-stacked me-2"></i>Inventory</a>
             <a class="nav-link <?= $page === 'purchases' ? 'active' : '' ?>" href="?route=purchases"><i class="fa-solid fa-truck-field me-2"></i>Purchases</a>
             <a class="nav-link <?= $page === 'services' ? 'active' : '' ?>" href="?route=services"><i class="fa-solid fa-print me-2"></i>Service billing</a>
@@ -370,8 +372,8 @@ $meta = [
                                     </select>
                                 </div>
                                 <div class="col-6">
-                                    <label class="form-label fw-medium">Amount tendered</label>
-                                    <input class="form-control" id="paidAmount" name="paid_amount" type="number" min="0" step=".01" placeholder="Optional" value="<?= e($resumeHold['paid_amount'] ?? '') ?>">
+                                    <label class="form-label fw-medium">Amount received</label>
+                                    <input class="form-control" id="paidAmount" name="paid_amount" type="number" min="0" step=".01" placeholder="Enter amount received" value="<?= e($resumeHold['paid_amount'] ?? '') ?>">
                                 </div>
                                 <div class="col-12"><label class="form-label fw-medium">Hold note <span class="optional text-muted small">Optional</span></label><input class="form-control" name="hold_note" placeholder="Waiting for customer confirmation" value="<?= e($resumeHold['note'] ?? '') ?>"></div>
                             </div>
@@ -379,7 +381,7 @@ $meta = [
                                 <div><span>Subtotal</span><strong id="cartSubtotal">৳ 0.00</strong></div>
                                 <div><span>Discount</span><strong id="cartDiscount">৳ 0.00</strong></div>
                                 <div class="cart-total"><span>Total due</span><strong id="cartTotal">৳ 0.00</strong></div>
-                                <div class="change-due"><span>Change</span><strong id="changeDue">৳ 0.00</strong></div>
+                                <div class="change-due"><span id="changeLabel">Change to return</span><strong id="changeDue">৳ 0.00</strong></div>
                             </div>
                             <div class="pos-checkout-actions"><button class="btn btn-outline-warning py-2 fw-semibold" type="submit" name="action" value="hold"><i class="fa-solid fa-pause me-1"></i> Hold bill</button><button class="btn btn-primary py-2 shadow-sm fw-semibold" id="completeSale" type="submit"><i class="fa-solid fa-receipt me-1"></i> Complete sale</button></div>
                         </form>
@@ -396,10 +398,28 @@ $meta = [
                     <form id="deleteHeldBillForm" method="post" class="d-none"><input type="hidden" name="_csrf" value="<?= e(csrf_token()) ?>"><input type="hidden" name="action" value="delete_hold"><input type="hidden" name="hold_id" id="deleteHeldBillId"></form>
                 </section>
                 <section class="panel recent-sales-panel shadow-sm rounded-4 p-4 bg-white">
-                    <div class="panel-heading d-flex justify-content-between align-items-center mb-3"><div><span class="section-kicker text-primary fw-bold small text-uppercase">Activity</span><h2 class="h5 fw-bold mb-0">Recent sales</h2></div><a class="small fw-semibold" href="?route=reports">View reports <i class="fa-solid fa-arrow-right ms-1"></i></a></div>
+                    <div class="panel-heading d-flex justify-content-between align-items-center mb-3"><div><span class="section-kicker text-primary fw-bold small text-uppercase">Activity</span><h2 class="h5 fw-bold mb-0">Recent sales</h2></div><a class="small fw-semibold" href="?route=sales">View all sales <i class="fa-solid fa-arrow-right ms-1"></i></a></div>
                     <div class="table-responsive"><table class="table table-hover align-middle mb-0"><thead class="table-light"><tr><th>Invoice</th><th>Customer</th><th>Operator</th><th>Payment</th><th>Total</th><th>Time</th></tr></thead><tbody>
                         <?php foreach (array_slice($sales ?? [], 0, 6) as $sale): ?><tr><td><strong><?= e($sale['invoice_number']) ?></strong></td><td><?= e($sale['customer_name'] ?? 'Walk-in customer') ?></td><td><?= e($sale['full_name']) ?></td><td><span class="badge bg-light text-dark border"><?= e($sale['payment_method']) ?></span></td><td><strong>৳ <?= number_format((float)$sale['total'], 2) ?></strong></td><td class="text-muted small"><?= date('d M, h:i A', strtotime($sale['created_at'])) ?></td></tr><?php endforeach; ?>
                         <?php if (empty($sales)): ?><tr><td colspan="6" class="text-center py-4 text-muted">No sales recorded yet.</td></tr><?php endif; ?></tbody></table></div>
+                </section>
+
+            <?php elseif ($page === 'sales'): ?>
+                <section class="panel shadow-sm rounded-4 p-4 bg-white mb-4">
+                    <form method="get" class="row g-3 align-items-end">
+                        <input type="hidden" name="route" value="sales">
+                        <div class="col-lg-4"><label class="form-label fw-semibold">Search</label><input class="form-control" name="search" value="<?= e($_GET['search'] ?? '') ?>" placeholder="Invoice, customer, or operator"></div>
+                        <div class="col-lg-2"><label class="form-label fw-semibold">From</label><input class="form-control" type="date" name="from" value="<?= e($_GET['from'] ?? '') ?>"></div>
+                        <div class="col-lg-2"><label class="form-label fw-semibold">To</label><input class="form-control" type="date" name="to" value="<?= e($_GET['to'] ?? '') ?>"></div>
+                        <div class="col-lg-2"><label class="form-label fw-semibold">Status</label><select class="form-select" name="status"><option value="">All statuses</option><?php foreach (['paid', 'partial', 'void'] as $saleStatus): ?><option value="<?= $saleStatus ?>" <?= ($_GET['status'] ?? '') === $saleStatus ? 'selected' : '' ?>><?= ucfirst($saleStatus) ?></option><?php endforeach; ?></select></div>
+                        <div class="col-lg-2 d-flex gap-2"><button class="btn btn-primary flex-grow-1"><i class="fa-solid fa-filter me-1"></i>Filter</button><a class="btn btn-outline-secondary" href="?route=sales" title="Clear filters"><i class="fa-solid fa-rotate-left"></i></a></div>
+                    </form>
+                </section>
+                <section class="panel shadow-sm rounded-4 p-4 bg-white">
+                    <div class="panel-heading d-flex justify-content-between align-items-center mb-3"><div><span class="section-kicker text-primary fw-bold small text-uppercase">Sales register</span><h2 class="h5 fw-bold mb-0">All sales <span class="badge bg-light text-dark border"><?= number_format(count($sales ?? [])) ?></span></h2></div><button class="btn btn-outline-secondary btn-sm" onclick="window.print()"><i class="fa-solid fa-print me-1"></i>Print</button></div>
+                    <div class="table-responsive"><table class="table table-hover align-middle"><thead class="table-light"><tr><th>Invoice</th><th>Customer</th><th>Operator</th><th>Subtotal</th><th>Discount</th><th>Total</th><th>Received</th><th>Change / due</th><th>Payment</th><th>Status</th><th>Date</th><th></th></tr></thead><tbody>
+                        <?php foreach ($sales ?? [] as $sale): $difference = (float) $sale['paid_amount'] - (float) $sale['total']; ?><tr><td><strong><?= e($sale['invoice_number']) ?></strong></td><td><?= e($sale['customer_name'] ?: 'Walk-in customer') ?></td><td><?= e($sale['full_name']) ?></td><td>৳ <?= number_format((float)$sale['subtotal'], 2) ?></td><td>৳ <?= number_format((float)$sale['discount'], 2) ?></td><td><strong>৳ <?= number_format((float)$sale['total'], 2) ?></strong></td><td>৳ <?= number_format((float)$sale['paid_amount'], 2) ?></td><td class="<?= $difference >= 0 ? 'text-success' : 'text-danger' ?>">৳ <?= number_format(abs($difference), 2) ?></td><td><span class="badge bg-light text-dark border"><?= e($sale['payment_method']) ?></span></td><td><span class="badge <?= $sale['status'] === 'paid' ? 'bg-success-subtle text-success' : ($sale['status'] === 'partial' ? 'bg-warning-subtle text-warning-emphasis' : 'bg-danger-subtle text-danger') ?>"><?= e(ucfirst($sale['status'])) ?></span></td><td class="small text-muted"><?= date('d M Y, h:i A', strtotime($sale['created_at'])) ?></td><td><?php if (!empty($sale['voucher_id'])): ?><a class="btn btn-sm btn-outline-primary" href="?route=voucher&id=<?= (int)$sale['voucher_id'] ?>" title="View voucher"><i class="fa-solid fa-eye"></i></a><?php endif; ?></td></tr><?php endforeach; ?>
+                        <?php if (empty($sales)): ?><tr><td colspan="12" class="text-center py-5 text-muted"><i class="fa-solid fa-receipt fs-2 d-block mb-2"></i>No sales match the selected filters.</td></tr><?php endif; ?></tbody></table></div>
                 </section>
 
             <?php elseif ($page === 'purchases'): ?>
@@ -419,21 +439,19 @@ $meta = [
                                 </select>
                             </div>
                             <div class="col-12">
-                                <label class="form-label fw-medium">Product</label>
-                                <select name="product_id" class="form-select" required>
-                                    <?php foreach ($products ?? [] as $product): ?>
-                                        <option value="<?= $product['id'] ?>"><?= e($product['name']) ?> (<?= e($product['sku']) ?>)</option>
-                                    <?php endforeach; ?>
-                                </select>
+                                <div class="d-flex justify-content-between align-items-center mb-2"><label class="form-label fw-medium mb-0">Products in this delivery</label><button type="button" class="btn btn-sm btn-outline-primary" id="addPurchaseRow"><i class="fa-solid fa-plus me-1"></i>Add product</button></div>
+                                <div id="purchaseItems" class="purchase-items">
+                                    <div class="purchase-item-row row g-2 align-items-end">
+                                        <div class="col-md-5"><label class="form-label small text-muted">Search created product</label><input class="form-control purchase-product-search mb-1" type="search" placeholder="Name, SKU, barcode..." autocomplete="off"><select id="purchaseProduct0" name="items[0][product_id]" class="form-select purchase-product-select" required><?php foreach ($products ?? [] as $product): ?><option value="<?= $product['id'] ?>"><?= e($product['name']) ?> · <?= e($product['sku']) ?><?= !empty($product['barcode']) ? ' · ' . e($product['barcode']) : '' ?><?= !empty($product['description']) ? ' · ' . e($product['description']) : '' ?></option><?php endforeach; ?></select></div>
+                                        <div class="col-md-2"><label class="form-label small text-muted">Quantity</label><input class="form-control purchase-number" name="items[0][quantity]" type="number" min=".001" step=".001" required></div>
+                                        <div class="col-md-2"><label class="form-label small text-muted">Unit cost</label><input class="form-control purchase-number" name="items[0][unit_cost]" type="number" min="0" step=".01" required></div>
+                                        <div class="col-md-2"><label class="form-label small text-muted">Line discount</label><input class="form-control purchase-number" name="items[0][discount]" type="number" min="0" step=".01" value="0"></div>
+                                        <div class="col-md-1"><button type="button" class="btn btn-outline-danger remove-purchase-row" title="Remove product" disabled><i class="fa-solid fa-xmark"></i></button></div>
+                                    </div>
+                                </div>
+                                <small class="text-muted d-block mt-2">Add all products received from this supplier in one order.</small>
                             </div>
-                            <div class="col-md-6">
-                                <label class="form-label fw-medium">Quantity</label>
-                                <input class="form-control" name="quantity" type="number" min=".001" step=".001" required>
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label fw-medium">Unit cost</label>
-                                <input class="form-control" name="unit_cost" type="number" min="0" step=".01" required>
-                            </div>
+                            <div class="col-12"><div class="purchase-payment-box"><div class="d-flex justify-content-between align-items-center mb-2"><strong>Payment reconciliation</strong><span class="small text-muted">Record what was actually paid</span></div><div class="row g-2"><div class="col-md-4"><label class="form-label small text-muted">Amount paid</label><input class="form-control purchase-number" name="paid_amount" id="purchasePaidAmount" type="number" min="0" step=".01" value="0"></div><div class="col-md-4"><label class="form-label small text-muted">Payment method</label><select class="form-select" name="payment_method"><option>cash</option><option>bKash</option><option>Nagad</option><option>Rocket</option><option>card</option><option>bank</option></select></div><div class="col-md-4"><label class="form-label small text-muted">Reference</label><input class="form-control" name="payment_reference" placeholder="Receipt or transfer reference"></div></div><div class="purchase-totals mt-3"><span>Gross subtotal <strong id="purchaseGrossTotal">৳ 0.00</strong></span><span>Discounts <strong id="purchaseDiscountTotal">৳ 0.00</strong></span><span>Total due <strong id="purchaseNetTotal">৳ 0.00</strong></span><span>Balance due <strong id="purchaseBalanceDue">৳ 0.00</strong></span></div></div></div>
                             <div class="col-12 pt-2">
                                 <button class="btn btn-primary w-100 py-2 shadow-sm fw-semibold"><i class="fa-solid fa-boxes-stacked me-1"></i> Receive stock</button>
                             </div>
@@ -446,7 +464,7 @@ $meta = [
                         <div class="table-responsive">
                             <table class="table table-hover align-middle">
                                 <thead class="table-light">
-                                    <tr><th>Order</th><th>Supplier</th><th>Total</th><th>Status</th><th>Date</th></tr>
+                                    <tr><th>Order</th><th>Supplier</th><th>Total</th><th>Paid</th><th>Balance</th><th>Method</th><th>Status</th><th>Date</th></tr>
                                 </thead>
                                 <tbody>
                                     <?php foreach ($purchases ?? [] as $purchase): ?>
@@ -454,6 +472,9 @@ $meta = [
                                             <td><strong><?= e($purchase['order_number']) ?></strong></td>
                                             <td><?= e($purchase['supplier_name']) ?></td>
                                             <td>৳ <?= number_format((float) $purchase['total'], 2) ?></td>
+                                            <td>৳ <?= number_format((float) ($purchase['paid_amount'] ?? 0), 2) ?></td>
+                                            <td class="<?= (float) $purchase['total'] - (float) ($purchase['paid_amount'] ?? 0) > 0 ? 'text-danger' : 'text-success' ?> fw-semibold">৳ <?= number_format(max(0, (float) $purchase['total'] - (float) ($purchase['paid_amount'] ?? 0)), 2) ?></td>
+                                            <td><?= e($purchase['payment_method'] ?? 'cash') ?></td>
                                             <td><span class="status-pill status-paid badge bg-success-subtle text-success px-2 py-1"><?= e($purchase['status']) ?></span></td>
                                             <td><?= date('d M Y', strtotime($purchase['created_at'])) ?></td>
                                         </tr>
@@ -463,6 +484,26 @@ $meta = [
                         </div>
                     </section>
                 </div>
+                <section class="panel shadow-sm rounded-4 p-4 bg-white mb-4">
+                    <div class="panel-heading mb-3">
+                        <div><span class="section-kicker text-primary fw-bold small text-uppercase">Supplier directory</span><h2 class="h5 fw-bold mb-0">Add supply partner</h2></div>
+                        <span class="text-muted small">Store every supplier detail in one place</span>
+                    </div>
+                    <form method="post" class="row g-3">
+                        <input type="hidden" name="_csrf" value="<?= e(csrf_token()) ?>">
+                        <input type="hidden" name="action" value="supplier">
+                        <div class="col-md-4"><label class="form-label fw-medium">Company / supplier name</label><input class="form-control" name="name" required placeholder="e.g. General Stationery Supply"></div>
+                        <div class="col-md-4"><label class="form-label fw-medium">Contact person</label><input class="form-control" name="contact_person" placeholder="Account manager"></div>
+                        <div class="col-md-4"><label class="form-label fw-medium">Phone</label><input class="form-control" name="phone" type="tel" placeholder="01700000000"></div>
+                        <div class="col-md-4"><label class="form-label fw-medium">Email</label><input class="form-control" name="email" type="email" placeholder="supplier@example.com"></div>
+                        <div class="col-md-4"><label class="form-label fw-medium">Opening payable balance</label><input class="form-control" name="opening_due" type="number" min="0" step=".01" value="0"><small class="text-muted">Amount already owed to this supplier</small></div>
+                        <div class="col-md-4"><label class="form-label fw-medium">Address</label><input class="form-control" name="address" placeholder="Business address"></div>
+                        <div class="col-12"><button class="btn btn-primary fw-semibold"><i class="fa-solid fa-building-circle-plus me-1"></i> Save supplier information</button></div>
+                    </form>
+                    <div class="table-responsive mt-4"><table class="table table-hover align-middle mb-0"><thead class="table-light"><tr><th>Supplier</th><th>Contact</th><th>Phone</th><th>Email</th><th>Opening due</th><th>Address</th></tr></thead><tbody>
+                        <?php foreach ($suppliers ?? [] as $supplier): ?><tr><td><strong><?= e($supplier['name']) ?></strong></td><td><?= e($supplier['contact_person'] ?? '-') ?></td><td><?= e($supplier['phone'] ?? '-') ?></td><td><?= e($supplier['email'] ?? '-') ?></td><td>৳ <?= number_format((float)($supplier['opening_due'] ?? 0), 2) ?></td><td><?= e($supplier['address'] ?? '-') ?></td></tr><?php endforeach; ?>
+                        <?php if (empty($suppliers)): ?><tr><td colspan="6" class="text-center py-4 text-muted">No supplier information has been added yet.</td></tr><?php endif; ?></tbody></table></div>
+                </section>
 
             <?php elseif ($page === 'services'): ?>
                 <div class="module-grid">
