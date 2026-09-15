@@ -1,0 +1,2 @@
+ALTER TABLE products ADD COLUMN supplier_id INT UNSIGNED NULL AFTER category_id;
+ALTER TABLE products ADD CONSTRAINT fk_products_supplier FOREIGN KEY (supplier_id) REFERENCES suppliers(id) ON DELETE SET NULL;

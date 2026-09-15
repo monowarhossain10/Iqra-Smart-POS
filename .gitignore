@@ -1,0 +1,10 @@
+.env
+.env.*
+!.env.example
+
+/.qodo/
+/vendor/
+*.log
+*.tmp
+Thumbs.db
+.DS_Store
