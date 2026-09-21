@@ -12,10 +12,38 @@ $meta = [
     'utf'       => ['Utility Bills', 'Bill collection and payments', 'fa-receipt'],
     'income'    => ['Income Records', 'Track business income streams', 'fa-hand-holding-dollar'],
     'expenses'  => ['Expenses', 'Track business operating expenses', 'fa-money-bill-wave'],
+    'accounts'  => ['All Accounts', 'Today’s cash movement and financial position', 'fa-wallet'],
+    'salaries'  => ['Employee Salaries', 'Manage salary payments', 'fa-users-gear'],
+    'vouchers'  => ['All Vouchers', 'View all transaction vouchers', 'fa-ticket'],
     'reports'   => ['Reports', 'Financial and operational insights', 'fa-chart-line'],
     'users'     => ['User Management', 'Manage system users and permissions', 'fa-users'],
     'forbidden' => ['Access restricted', 'Your role cannot open this workspace', 'fa-lock'],
 ][$page] ?? ['Workspace', '', 'fa-grid-2'];
+
+// Some legacy module files still contain a complete HTML document. They are
+// rendered through this layout, so retain only their main content and discard
+// their duplicate document shell, sidebar, and local topbar. Preserve the
+// controller-provided view variables while rendering inside the buffer.
+$moduleViewData = get_defined_vars();
+$renderModule = static function (string $module) use ($moduleViewData): void {
+    extract($moduleViewData, EXTR_SKIP);
+    ob_start();
+    require __DIR__ . '/../modules/' . $module . '.php';
+    $document = (string) ob_get_clean();
+
+    if (!preg_match('~<main\\b[^>]*>(.*)</main>~is', $document, $matches)) {
+        echo $document;
+        return;
+    }
+
+    $content = preg_replace(
+        '~\\A\\s*(?:<!--.*?-->\\s*)*<header\\b[^>]*>.*?</header>\\s*~is',
+        '',
+        $matches[1],
+        1
+    );
+    echo $content;
+};
 ?>
 <!doctype html>
 <html lang="en">
@@ -30,45 +58,10 @@ $meta = [
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" rel="stylesheet">
     <link href="<?= e(APP_URL) ?>/assets/css/app.css" rel="stylesheet">
     <link href="<?= e(APP_URL) ?>/assets/css/modules.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </head>
 <body class="app-body">
-    <!-- Sidebar Navigation -->
-    <aside class="sidebar shadow-sm" id="sidebar">
-        <div class="sidebar-brand">
-            <div class="brand-mark shadow-sm">
-                <i class="fa-solid fa-feather-pointed"></i>
-            </div>
-            <div>
-                <strong>iqra</strong>
-                <span>stationary solutions</span>
-            </div>
-        </div>
-        <nav class="nav flex-column gap-1 px-2">
-            <a class="nav-link <?= $page === 'dashboard' ? 'active' : '' ?>" href="<?= e(APP_URL) ?>"><i class="fa-solid fa-grid-2 me-2"></i>Overview</a>
-            <a class="nav-link <?= $page === 'pos' ? 'active' : '' ?>" href="?route=pos"><i class="fa-solid fa-cash-register me-2"></i>Point of sale <span class="nav-badge">F2</span></a>
-            <a class="nav-link <?= $page === 'sales' ? 'active' : '' ?>" href="?route=sales"><i class="fa-solid fa-receipt me-2"></i>Recent sales</a>
-            <a class="nav-link <?= $page === 'inventory' ? 'active' : '' ?>" href="?route=inventory"><i class="fa-solid fa-boxes-stacked me-2"></i>Inventory</a>
-            <a class="nav-link <?= $page === 'purchases' ? 'active' : '' ?>" href="?route=purchases"><i class="fa-solid fa-truck-field me-2"></i>Purchases</a>
-            <a class="nav-link <?= $page === 'services' ? 'active' : '' ?>" href="?route=services"><i class="fa-solid fa-print me-2"></i>Service billing</a>
-            <a class="nav-link <?= $page === 'returns' ? 'active' : '' ?>" href="?route=returns"><i class="fa-solid fa-arrow-rotate-left me-2"></i>Product returns</a>
-            <a class="nav-link <?= $page === 'mfs' ? 'active' : '' ?>" href="?route=mfs"><i class="fa-solid fa-mobile-screen-button me-2"></i>MFS ledger</a>
-            <a class="nav-link <?= $page === 'utility' ? 'active' : '' ?>" href="?route=utility"><i class="fa-solid fa-receipt me-2"></i>Utility bills</a>
-            <a class="nav-link <?= $page === 'income' ? 'active' : '' ?>" href="?route=income"><i class="fa-solid fa-hand-holding-dollar me-2"></i>Income records</a>
-            <a class="nav-link <?= $page === 'expenses' ? 'active' : '' ?>" href="?route=expenses"><i class="fa-solid fa-money-bill-wave me-2"></i>Expenses</a>
-            <a class="nav-link <?= $page === 'reports' ? 'active' : '' ?>" href="?route=reports"><i class="fa-solid fa-chart-line me-2"></i>Reports</a>
-            <a class="nav-link <?= $page === 'salaries' ? 'active' : '' ?>" href="?route=salaries"><i class="fa-solid fa-users-gear me-2"></i>Employee salaries</a>
-            <a class="nav-link <?= $page === 'users' ? 'active' : '' ?>" href="?route=users"><i class="fa-solid fa-users me-2"></i>User management</a>
-        </nav>
-        <div class="sidebar-bottom p-3">
-            <div class="help-box p-3 rounded-3 bg-light border">
-                <i class="fa-regular fa-circle-question fs-5 text-muted"></i>
-                <div>
-                    <strong>Need a hand?</strong>
-                    <small class="d-block text-muted">Use quick actions</small>
-                </div>
-            </div>
-        </div>
-    </aside>
+    <?php require __DIR__ . '/../partials/sidebar.php'; ?>
 
     <!-- Main Content Area -->
     <main class="main-content <?= $page === 'pos' ? 'pos-shell' : '' ?>">
@@ -297,7 +290,7 @@ $meta = [
                         <div class="table-responsive">
                             <table class="table table-hover align-middle" id="productTable">
                                 <thead class="table-light">
-                                    <tr><th>Product</th><th>SKU</th><th>Category</th><th>Buying</th><th>Selling</th><th>Stock</th></tr>
+                                    <tr><th>Product</th><th>SKU</th><th>Category</th><th>Buying</th><th>Selling</th><th>Stock</th><th>Actions</th></tr>
                                 </thead>
                                 <tbody>
                                     <?php foreach ($products ?? [] as $product): ?>
@@ -308,6 +301,11 @@ $meta = [
                                             <td>৳ <?= number_format((float) $product['buying_price'], 2) ?></td>
                                             <td><strong>৳ <?= number_format((float) $product['selling_price'], 2) ?></strong></td>
                                             <td><span class="stock-status px-2 py-1 rounded-pill small fw-semibold <?= (float) $product['stock_quantity'] <= (float) $product['low_stock_threshold'] ? 'bg-danger-subtle text-danger stock-low' : 'bg-success-subtle text-success stock-ok' ?>"><?= number_format((float) $product['stock_quantity'], 0) ?></span></td>
+                                            <td>
+                                                <button type="button" class="btn btn-sm btn-outline-secondary print-product-labels" title="Print price label" aria-label="Print price label for <?= e($product['name']) ?>" data-label-product="<?= e(json_encode(['name' => $product['name'], 'sku' => $product['sku'], 'barcode' => $product['barcode'] ?? '', 'price' => $product['selling_price']])) ?>">
+                                                    <i class="fa-solid fa-tag"></i>
+                                                </button>
+                                            </td>
                                         </tr>
                                     <?php endforeach; ?>
                                 </tbody>
@@ -318,38 +316,38 @@ $meta = [
 
             <?php elseif ($page === 'pos'): ?>
                 <?php $lowStockCount = count(array_filter($products ?? [], static fn ($product) => (float) $product['stock_quantity'] <= (float) $product['low_stock_threshold'])); ?>
-                <section class="pos-stats">
-                    <div><span>Catalog</span><strong><?= number_format(count($products ?? [])) ?></strong><small>active products</small></div>
-                    <div><span>Low stock</span><strong class="text-danger"><?= number_format($lowStockCount) ?></strong><small>need attention</small></div>
-                    <div><span>Recent sales</span><strong><?= number_format(count($sales ?? [])) ?></strong><small>latest transactions</small></div>
-                    <div><span>Shortcut</span><strong>F2</strong><small>focus product search</small></div>
+                <section class="pos-command-bar" aria-label="POS actions">
+                    <div class="counter-status"><span class="status-dot"></span><span><strong>Counter ready</strong><small><?= e(Auth::user()['name'] ?? 'Operator') ?> · <?= date('D, d M') ?></small></span></div>
+                    <div class="pos-shortcuts" aria-label="Keyboard shortcuts"><span><kbd>F2</kbd> Search</span><span><kbd>Enter</kbd> Add match</span><span><kbd>Ctrl</kbd> + <kbd>Enter</kbd> Pay</span></div>
                 </section>
                 <div class="pos-layout">
                     <section class="panel pos-products shadow-sm rounded-4 p-4 bg-white">
                         <div class="pos-toolbar">
-                            <div><span class="section-kicker text-primary fw-bold small text-uppercase">Counter sales</span><h2 class="h5 fw-bold mb-0">Build an order</h2></div>
-                            <div class="pos-search-box"><i class="fa-solid fa-magnifying-glass"></i><input id="posProductSearch" type="search" placeholder="Search name, SKU or scan barcode..." autocomplete="off"><kbd>F2</kbd></div>
+                            <div><span class="section-kicker text-primary fw-bold small text-uppercase">New sale</span><h2 class="h4 fw-bold mb-0">Find a product</h2><small class="text-muted">Search by name, SKU, or barcode scanner</small></div>
+                            <div class="pos-search-box" role="search"><i class="fa-solid fa-barcode"></i><input id="posProductSearch" type="search" placeholder="Scan barcode or search products" autocomplete="off" aria-controls="posProducts" aria-label="Search products"><kbd>F2</kbd></div>
                         </div>
                         <div class="pos-categories" role="toolbar" aria-label="Product categories">
-                            <button type="button" class="category-pill active" data-category="all">All products</button>
+                            <button type="button" class="category-pill active" data-category="all">All <span><?= number_format(count($products ?? [])) ?></span></button>
                             <?php $categories = array_values(array_unique(array_filter(array_map(static fn ($product) => $product['category_name'] ?? null, $products ?? [])))); ?>
-                            <?php foreach ($categories as $category): ?><button type="button" class="category-pill" data-category="<?= e(strtolower($category)) ?>"><?= e($category) ?></button><?php endforeach; ?>
+                            <?php foreach ($categories as $category): ?><?php $categoryCount = count(array_filter($products ?? [], static fn ($product) => strtolower((string) ($product['category_name'] ?? 'uncategorized')) === strtolower($category))); ?><button type="button" class="category-pill" data-category="<?= e(strtolower($category)) ?>"><?= e($category) ?> <span><?= $categoryCount ?></span></button><?php endforeach; ?>
                         </div>
+                        <div class="product-list-meta"><strong id="productMatchCount" aria-live="polite"><?= number_format(count($products ?? [])) ?> products</strong><span>Click a product or press <kbd>Enter</kbd> after a search</span></div>
                         <div class="product-list" id="posProducts">
                             <?php foreach ($products ?? [] as $product): ?>
-                                <button type="button" class="product-tile shadow-xs border rounded-3 p-3 text-start bg-white" <?= (float) $product['stock_quantity'] <= 0 ? 'disabled' : '' ?> data-category="<?= e(strtolower($product['category_name'] ?? 'uncategorized')) ?>" data-product='<?= e(json_encode(['id'=>(int)$product['id'],'name'=>$product['name'],'sku'=>$product['sku'],'price'=>(float)$product['selling_price'],'stock'=>(float)$product['stock_quantity']])) ?>'>
-                                    <span class="product-tile-icon text-primary mb-2 d-inline-block fs-5"><i class="fa-solid fa-box"></i></span>
-                                    <strong class="d-block text-dark text-truncate"><?= e($product['name']) ?></strong>
-                                    <small class="d-block text-muted mb-1"><?= e($product['sku']) ?> · <span class="<?= (float) $product['stock_quantity'] <= (float) $product['low_stock_threshold'] ? 'text-danger' : 'text-success' ?>"><?= number_format((float) $product['stock_quantity'], 0) ?> available</span></small>
-                                    <b class="text-success">৳ <?= number_format((float) $product['selling_price'], 2) ?></b>
+                                <button type="button" class="product-tile shadow-xs border rounded-3 p-3 text-start bg-white" <?= (float) $product['stock_quantity'] <= 0 ? 'disabled' : '' ?> data-category="<?= e(strtolower($product['category_name'] ?? 'uncategorized')) ?>" data-product='<?= e(json_encode(['id'=>(int)$product['id'],'name'=>$product['name'],'sku'=>$product['sku'],'barcode'=>$product['barcode'] ?? '','price'=>(float)$product['selling_price'],'stock'=>(float)$product['stock_quantity']])) ?>'>
+                                    <span class="product-tile-icon"><i class="fa-solid fa-box"></i></span>
+                                    <span class="product-details"><strong><?= e($product['name']) ?></strong><small><?= e($product['sku']) ?><?= !empty($product['barcode']) ? ' · ' . e($product['barcode']) : '' ?></small></span>
+                                    <span class="stock-badge <?= (float) $product['stock_quantity'] <= (float) $product['low_stock_threshold'] ? 'is-low' : '' ?>"><i class="fa-solid fa-cubes-stacked"></i> <?= number_format((float) $product['stock_quantity'], 0) ?> left</span>
+                                    <b>৳ <?= number_format((float) $product['selling_price'], 2) ?></b><i class="fa-solid fa-plus product-add-icon" aria-hidden="true"></i>
                                 </button>
                             <?php endforeach; ?>
                         </div>
+                        <div id="noProductMatches" class="pos-no-matches" hidden><i class="fa-solid fa-magnifying-glass"></i><strong>No matching products</strong><span>Try a different name, SKU, or barcode.</span></div>
                     </section>
                     <section class="panel cart-panel shadow-sm rounded-4 p-4 bg-white">
                         <div class="panel-heading d-flex justify-content-between align-items-center mb-3">
                             <div><span class="section-kicker text-primary fw-bold small text-uppercase">Current order</span><h2 class="h5 fw-bold mb-0">Cart <span class="count-badge badge bg-primary" id="cartCount">0</span></h2></div>
-                            <button type="button" class="clear-cart btn btn-outline-danger btn-sm" id="clearCart">Clear</button>
+                            <button type="button" class="clear-cart btn btn-light btn-sm" id="clearCart" title="Clear current order"><i class="fa-solid fa-trash-can me-1"></i> Clear</button>
                         </div>
                         <div id="cartItems" class="cart-items border rounded-3 p-3 mb-3 bg-light overflow-auto" data-initial-cart='<?= e(json_encode($resumeHold['cart'] ?? [])) ?>'>
                             <div class="empty-state compact text-center text-muted py-4"><i class="fa-solid fa-basket-shopping fs-3 mb-2"></i><br>Select an item to begin</div>
@@ -358,7 +356,7 @@ $meta = [
                             <input type="hidden" name="_csrf" value="<?= e(csrf_token()) ?>">
                             <input type="hidden" name="cart" id="cartInput">
                             <input type="hidden" name="hold_id" value="<?= (int) ($resumeHold['id'] ?? 0) ?>">
-                            <label class="form-label fw-medium">Customer name <span class="optional text-muted small">Optional</span></label>
+                            <label class="form-label fw-medium">Customer <span class="optional text-muted small">Optional</span></label>
                             <input class="form-control mb-2" name="customer_name" placeholder="Walk-in customer" value="<?= e($resumeHold['customer_name'] ?? '') ?>">
                             <div class="row g-2 mb-3">
                                 <div class="col-6">
@@ -367,7 +365,7 @@ $meta = [
                                 </div>
                                 <div class="col-6">
                                     <label class="form-label fw-medium">Payment</label>
-                                    <select class="form-select" name="payment_method">
+                                    <select class="form-select" id="paymentMethod" name="payment_method">
                                         <?php foreach (['cash', 'bKash', 'Nagad', 'Rocket', 'card', 'mixed'] as $paymentMethod): ?><option <?= ($resumeHold['payment_method'] ?? 'cash') === $paymentMethod ? 'selected' : '' ?>><?= e($paymentMethod) ?></option><?php endforeach; ?>
                                     </select>
                                 </div>
@@ -377,13 +375,14 @@ $meta = [
                                 </div>
                                 <div class="col-12"><label class="form-label fw-medium">Hold note <span class="optional text-muted small">Optional</span></label><input class="form-control" name="hold_note" placeholder="Waiting for customer confirmation" value="<?= e($resumeHold['note'] ?? '') ?>"></div>
                             </div>
+                            <div class="payment-presets" aria-label="Quick payment selection"><button type="button" data-payment="cash"><i class="fa-solid fa-money-bill-wave"></i> Cash</button><button type="button" data-payment="bKash">bKash</button><button type="button" data-payment="Nagad">Nagad</button><button type="button" data-payment="card"><i class="fa-regular fa-credit-card"></i> Card</button></div>
                             <div class="cart-summary p-3 rounded-3 bg-light mb-3">
                                 <div><span>Subtotal</span><strong id="cartSubtotal">৳ 0.00</strong></div>
                                 <div><span>Discount</span><strong id="cartDiscount">৳ 0.00</strong></div>
                                 <div class="cart-total"><span>Total due</span><strong id="cartTotal">৳ 0.00</strong></div>
                                 <div class="change-due"><span id="changeLabel">Change to return</span><strong id="changeDue">৳ 0.00</strong></div>
                             </div>
-                            <div class="pos-checkout-actions"><button class="btn btn-outline-warning py-2 fw-semibold" type="submit" name="action" value="hold"><i class="fa-solid fa-pause me-1"></i> Hold bill</button><button class="btn btn-primary py-2 shadow-sm fw-semibold" id="completeSale" type="submit"><i class="fa-solid fa-receipt me-1"></i> Complete sale</button></div>
+                            <div class="pos-checkout-actions"><button class="btn btn-outline-warning py-2 fw-semibold" type="submit" name="action" value="hold"><i class="fa-solid fa-pause me-1"></i> Hold <kbd>F4</kbd></button><button class="btn btn-primary py-2 shadow-sm fw-semibold" id="completeSale" type="submit"><i class="fa-solid fa-lock me-1"></i> Pay now <kbd>Ctrl ↵</kbd></button></div>
                         </form>
                     </section>
                 </div>
@@ -733,6 +732,46 @@ $meta = [
                     </section>
                 </div>
 
+            <?php elseif ($page === 'accounts'): ?>
+                <?php $todayAccounts = $accountsOverview['today'] ?? []; $financialPosition = $accountsOverview['position'] ?? []; ?>
+                <section class="accounts-hero">
+                    <div><span class="section-kicker">Financial command center</span><h2>Today’s money movement</h2><p>Live income, outgoings, account balances, and a single financial activity trail.</p></div>
+                    <div class="accounts-hero-actions"><a class="btn btn-light" href="?route=income"><i class="fa-solid fa-plus me-1"></i> Add income</a><a class="btn btn-light" href="?route=expenses"><i class="fa-solid fa-minus me-1"></i> Add expense</a><a class="btn btn-primary" href="?route=reports"><i class="fa-solid fa-chart-line me-1"></i> Full report</a></div>
+                </section>
+                <section class="accounts-kpis">
+                    <article class="account-kpi income"><span>Today’s income</span><strong>৳ <?= number_format((float) ($todayAccounts['income'] ?? 0), 2) ?></strong><small>Sales, services, utility fees & other income</small></article>
+                    <article class="account-kpi outgoing"><span>Today’s expenses</span><strong>৳ <?= number_format((float) ($todayAccounts['outgoing'] ?? 0), 2) ?></strong><small>Purchases, expenses & salary payments</small></article>
+                    <article class="account-kpi <?= (float) ($todayAccounts['net'] ?? 0) < 0 ? 'negative' : 'net' ?>"><span>Net cash movement</span><strong>৳ <?= number_format((float) ($todayAccounts['net'] ?? 0), 2) ?></strong><small>Income less outgoing today</small></article>
+                    <article class="account-kpi float"><span>Active MFS float</span><strong>৳ <?= number_format((float) ($financialPosition['mfs_float'] ?? 0), 2) ?></strong><small>Across active provider accounts</small></article>
+                </section>
+                <div class="accounts-grid">
+                    <section class="panel account-breakdown">
+                        <div class="panel-heading"><div><span class="section-kicker">Today’s breakdown</span><h2 class="h5 fw-bold mb-0">Income and outgoing</h2></div><span class="text-muted small"><?= date('d M Y') ?></span></div>
+                        <div class="account-breakdown-list">
+                            <div><span><i class="fa-solid fa-cash-register"></i> POS sales</span><strong>৳ <?= number_format((float) ($todayAccounts['sales'] ?? 0), 2) ?></strong></div>
+                            <div><span><i class="fa-solid fa-print"></i> Service revenue</span><strong>৳ <?= number_format((float) ($todayAccounts['services'] ?? 0), 2) ?></strong></div>
+                            <div><span><i class="fa-solid fa-receipt"></i> Utility service fees</span><strong>৳ <?= number_format((float) ($todayAccounts['utility_fees'] ?? 0), 2) ?></strong></div>
+                            <div><span><i class="fa-solid fa-hand-holding-dollar"></i> Other income</span><strong>৳ <?= number_format((float) ($todayAccounts['other_income'] ?? 0), 2) ?></strong></div>
+                            <div class="is-outgoing"><span><i class="fa-solid fa-truck-field"></i> Stock purchases</span><strong>− ৳ <?= number_format((float) ($todayAccounts['purchases'] ?? 0), 2) ?></strong></div>
+                            <div class="is-outgoing"><span><i class="fa-solid fa-money-bill-wave"></i> Operating expenses</span><strong>− ৳ <?= number_format((float) ($todayAccounts['expenses'] ?? 0), 2) ?></strong></div>
+                            <div class="is-outgoing"><span><i class="fa-solid fa-users-gear"></i> Salary payments</span><strong>− ৳ <?= number_format((float) ($todayAccounts['salaries'] ?? 0), 2) ?></strong></div>
+                        </div>
+                    </section>
+                    <section class="panel account-position">
+                        <div class="panel-heading"><div><span class="section-kicker">Financial position</span><h2 class="h5 fw-bold mb-0">Business balances</h2></div><a href="?route=mfs" class="small fw-semibold">Manage MFS</a></div>
+                        <div class="position-card"><i class="fa-solid fa-mobile-screen-button"></i><span>MFS float</span><strong>৳ <?= number_format((float) ($financialPosition['mfs_float'] ?? 0), 2) ?></strong></div>
+                        <div class="position-card"><i class="fa-solid fa-boxes-stacked"></i><span>Inventory at cost</span><strong>৳ <?= number_format((float) ($financialPosition['inventory_value'] ?? 0), 2) ?></strong></div>
+                        <div class="position-card <?= (float) ($financialPosition['customer_due'] ?? 0) > 0 ? 'attention' : '' ?>"><i class="fa-solid fa-clock"></i><span>Customer balances due</span><strong>৳ <?= number_format((float) ($financialPosition['customer_due'] ?? 0), 2) ?></strong></div>
+                    </section>
+                </div>
+                <section class="panel accounts-ledger">
+                    <div class="panel-heading"><div><span class="section-kicker">All accounts</span><h2 class="h5 fw-bold mb-0">Financial activity</h2></div><span class="text-muted small">Latest 80 entries</span></div>
+                    <div class="table-responsive"><table class="table table-hover align-middle mb-0"><thead class="table-light"><tr><th>Date & time</th><th>Type</th><th>Description</th><th class="text-end">Money in</th><th class="text-end">Money out</th></tr></thead><tbody>
+                        <?php foreach ($accountsOverview['ledger'] ?? [] as $entry): ?><tr><td class="text-muted small"><?= date('d M Y, h:i A', strtotime($entry['occurred_at'])) ?></td><td><span class="ledger-type <?= (float) $entry['outflow'] > 0 ? 'out' : 'in' ?>"><?= e($entry['entry_type']) ?></span></td><td><strong><?= e($entry['description']) ?></strong></td><td class="text-end text-success fw-semibold"><?= (float) $entry['inflow'] > 0 ? '৳ ' . number_format((float) $entry['inflow'], 2) : '—' ?></td><td class="text-end text-danger fw-semibold"><?= (float) $entry['outflow'] > 0 ? '৳ ' . number_format((float) $entry['outflow'], 2) : '—' ?></td></tr><?php endforeach; ?>
+                        <?php if (empty($accountsOverview['ledger'])): ?><tr><td colspan="5" class="text-center text-muted py-5">No financial activity has been recorded yet.</td></tr><?php endif; ?>
+                    </tbody></table></div>
+                </section>
+
             <?php elseif ($page === 'reports'): ?>
                 <section class="panel shadow-sm rounded-4 p-4 bg-white border-0 mb-4">
                     <form method="get" class="row g-3 align-items-end">
@@ -747,6 +786,7 @@ $meta = [
                         </div>
                         <div class="col-md-4 d-flex gap-2">
                             <button class="btn btn-primary flex-grow-1"><i class="fa-solid fa-filter me-1"></i>Apply range</button>
+                            <a class="btn btn-outline-success" href="?route=reports&amp;start_date=<?= urlencode((string) ($report['start_date'] ?? '')) ?>&amp;end_date=<?= urlencode((string) ($report['end_date'] ?? '')) ?>&amp;export=excel" title="Export the complete report to Excel"><i class="fa-solid fa-file-excel me-1"></i>Excel</a>
                             <button type="button" class="btn btn-outline-secondary" onclick="window.print()" title="Print report"><i class="fa-solid fa-print"></i></button>
                         </div>
                     </form>
@@ -775,6 +815,28 @@ $meta = [
                     <section class="col-xl-7"><div class="panel shadow-sm rounded-4 p-4 bg-white h-100"><div class="panel-heading mb-3"><span class="section-kicker text-primary fw-bold small text-uppercase">Staff management</span><h2 class="h5 fw-bold mb-0">Sales by operator</h2></div><div class="table-responsive"><table class="table table-hover align-middle"><thead class="table-light"><tr><th>Staff member</th><th>Transactions</th><th>Revenue</th></tr></thead><tbody><?php foreach($report['staff_activity'] ?? [] as $staff): ?><tr><td><strong><?= e($staff['full_name']) ?></strong></td><td><?= number_format((int)$staff['transactions']) ?></td><td>৳ <?= number_format((float)$staff['revenue'], 2) ?></td></tr><?php endforeach; ?><?php if (!($report['staff_activity'] ?? [])): ?><tr><td colspan="3" class="text-center py-4 text-muted">No staff activity for this period.</td></tr><?php endif; ?></tbody></table></div></div></section>
                     <section class="col-xl-5"><div class="panel shadow-sm rounded-4 p-4 bg-white h-100"><div class="panel-heading mb-3"><span class="section-kicker text-danger fw-bold small text-uppercase">Inventory control</span><h2 class="h5 fw-bold mb-0">Low-stock watchlist</h2></div><div class="table-responsive"><table class="table table-hover align-middle"><thead class="table-light"><tr><th>Product</th><th>SKU</th><th>On hand</th></tr></thead><tbody><?php foreach($report['low_stock'] ?? [] as $item): ?><tr><td><?= e($item['name']) ?></td><td><?= e($item['sku']) ?></td><td class="text-danger fw-semibold"><?= number_format((float)$item['stock_quantity'], 0) ?></td></tr><?php endforeach; ?><?php if (!($report['low_stock'] ?? [])): ?><tr><td colspan="3" class="text-center py-4 text-muted">Stock levels look healthy.</td></tr><?php endif; ?></tbody></table></div></div></section>
                 </div>
+
+            <?php elseif ($page === 'mfs'): ?>
+                <?php $renderModule('mfs'); ?>
+
+            <?php elseif ($page === 'returns'): ?>
+                <?php $renderModule('returns'); ?>
+
+            <?php elseif ($page === 'salaries'): ?>
+                <?php $renderModule('salaries'); ?>
+
+            <?php elseif ($page === 'income'): ?>
+                <?php $renderModule('income'); ?>
+
+            <?php elseif ($page === 'expenses'): ?>
+                <?php $renderModule('expenses'); ?>
+
+            <?php elseif ($page === 'users'): ?>
+                <?php $renderModule('users'); ?>
+
+            <?php elseif ($page === 'vouchers'): ?>
+                <?php $renderModule('vouchers'); ?>
+
             <?php endif; ?>
         </div>
 
@@ -787,5 +849,257 @@ $meta = [
 
     <script>window.IQRA_APP_URL = <?= json_encode(APP_URL) ?>;</script>
     <script src="<?= e(APP_URL) ?>/assets/js/app.js"></script>
+    
+    <!-- Product Label Printing Modal -->
+    <div class="modal fade" id="labelModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Print Product Labels</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Select Products</label>
+                        <select class="form-select" id="labelProductSelect" multiple size="5">
+                            <?php foreach ($products ?? [] as $product): ?>
+                                <option value="<?= htmlspecialchars(json_encode($product)) ?>">
+                                    <?= e($product['name']) ?> - <?= e($product['sku']) ?> (৳<?= number_format((float)$product['selling_price'], 2) ?>)
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                        <small class="text-muted">Hold Ctrl/Cmd to select multiple products</small>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Number of Labels per Product</label>
+                        <input type="number" class="form-control" id="labelQuantity" value="1" min="1" max="100">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Label Size</label>
+                        <select class="form-select" id="labelSize">
+                            <option value="small">Small (50mm x 30mm)</option>
+                            <option value="medium" selected>Medium (70mm x 40mm)</option>
+                            <option value="large">Large (100mm x 50mm)</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" onclick="printSelectedLabels()">
+                        <i class="fa-solid fa-print me-1"></i> Print Labels
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function openLabelModal() {
+            var modal = new bootstrap.Modal(document.getElementById('labelModal'));
+            modal.show();
+        }
+
+        function printSingleLabel(product) {
+            printLabels([product], 1, 'medium');
+        }
+
+        function printSelectedLabels() {
+            var select = document.getElementById('labelProductSelect');
+            var selectedProducts = [];
+            for (var i = 0; i < select.options.length; i++) {
+                if (select.options[i].selected) {
+                    selectedProducts.push(JSON.parse(select.options[i].value));
+                }
+            }
+            
+            if (selectedProducts.length === 0) {
+                alert('Please select at least one product');
+                return;
+            }
+
+            var quantity = parseInt(document.getElementById('labelQuantity').value) || 1;
+            var size = document.getElementById('labelSize').value;
+            
+            var modal = bootstrap.Modal.getInstance(document.getElementById('labelModal'));
+            modal.hide();
+            
+            printLabels(selectedProducts, quantity, size);
+        }
+
+        function printLabels(products, quantity, size) {
+            var dimensions = {
+                small: { width: '50mm', height: '35mm', titleSize: '11px', skuSize: '9px', priceSize: '14px' },
+                medium: { width: '70mm', height: '45mm', titleSize: '13px', skuSize: '10px', priceSize: '16px' },
+                large: { width: '100mm', height: '60mm', titleSize: '15px', skuSize: '11px', priceSize: '18px' }
+            };
+            
+            var dim = dimensions[size] || dimensions.medium;
+            var labelsHtml = '';
+            
+            products.forEach(function(product) {
+                for (var i = 0; i < quantity; i++) {
+                    labelsHtml += `
+                        <div class="product-label" style="
+                            width: ${dim.width};
+                            height: ${dim.height};
+                            border: 2px solid #087f73;
+                            border-radius: 8px;
+                            padding: 8px;
+                            margin: 5px;
+                            display: inline-block;
+                            font-family: 'DM Sans', Arial, sans-serif;
+                            page-break-inside: avoid;
+                            box-sizing: border-box;
+                            background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+                            box-shadow: 0 2px 8px rgba(8, 127, 115, 0.15);
+                            position: relative;
+                            overflow: hidden;
+                        ">
+                            <!-- Brand Header -->
+                            <div style="
+                                display: flex;
+                                align-items: center;
+                                gap: 6px;
+                                margin-bottom: 6px;
+                                padding-bottom: 6px;
+                                border-bottom: 1px dashed #087f73;
+                            ">
+                                <div style="
+                                    width: 20px;
+                                    height: 20px;
+                                    background: #087f73;
+                                    color: white;
+                                    border-radius: 4px;
+                                    display: flex;
+                                    align-items: center;
+                                    justify-content: center;
+                                    font-size: 10px;
+                                    font-weight: bold;
+                                ">I</div>
+                                <div style="
+                                    font-size: 10px;
+                                    font-weight: 700;
+                                    color: #087f73;
+                                    text-transform: uppercase;
+                                    letter-spacing: 0.5px;
+                                ">Iqra Stationary</div>
+                            </div>
+                            
+                            <!-- Product Name -->
+                            <div style="
+                                font-weight: 700;
+                                font-size: ${dim.titleSize};
+                                color: #0f3332;
+                                margin-bottom: 4px;
+                                line-height: 1.2;
+                                min-height: 1.2em;
+                                overflow: hidden;
+                                text-overflow: ellipsis;
+                                display: -webkit-box;
+                                -webkit-line-clamp: 2;
+                                -webkit-box-orient: vertical;
+                            ">${product.name}</div>
+                            
+                            <!-- SKU -->
+                            <div style="
+                                font-size: ${dim.skuSize};
+                                color: #64748b;
+                                margin-bottom: 6px;
+                                font-weight: 500;
+                                background: #f1f5f9;
+                                padding: 2px 6px;
+                                border-radius: 4px;
+                                display: inline-block;
+                            ">SKU: ${product.sku}</div>
+                            
+                            <!-- Price Section -->
+                            <div style="
+                                margin-top: auto;
+                                display: flex;
+                                align-items: baseline;
+                                justify-content: space-between;
+                                gap: 4px;
+                            ">
+                                <div style="
+                                    font-size: ${dim.priceSize};
+                                    font-weight: 800;
+                                    color: #087f73;
+                                    font-family: 'Outfit', Arial, sans-serif;
+                                ">৳${parseFloat(product.selling_price).toFixed(2)}</div>
+                                ${product.barcode ? `<div style="font-size: 8px; color: #94a3b8; max-width: 60px; overflow: hidden; text-overflow: ellipsis;">${product.barcode}</div>` : ''}
+                            </div>
+                            
+                            <!-- Decorative Corner -->
+                            <div style="
+                                position: absolute;
+                                top: 0;
+                                right: 0;
+                                width: 0;
+                                height: 0;
+                                border-style: solid;
+                                border-width: 0 15px 15px 0;
+                                border-color: transparent #087f73 transparent transparent;
+                            "></div>
+                        </div>
+                    `;
+                }
+            });
+            
+            // Create a new window for printing
+            var printWindow = window.open('', '_blank');
+            printWindow.document.write(`
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <title>Print Labels</title>
+                    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Outfit:wght@600;700&display=swap" rel="stylesheet">
+                    <style>
+                        @page {
+                            size: auto;
+                            margin: 8mm;
+                        }
+                        body {
+                            margin: 0;
+                            padding: 0;
+                            font-family: 'DM Sans', Arial, sans-serif;
+                            background: #f8fafc;
+                        }
+                        .labels-container {
+                            display: flex;
+                            flex-wrap: wrap;
+                            gap: 8px;
+                            padding: 10px;
+                        }
+                        @media print {
+                            body {
+                                background: white;
+                            }
+                            .labels-container {
+                                gap: 5px;
+                                padding: 0;
+                            }
+                        }
+                    </style>
+                </head>
+                <body>
+                    <div class="labels-container">
+                        ${labelsHtml}
+                    </div>
+                    <script>
+                        window.onload = function() {
+                            setTimeout(function() {
+                                window.print();
+                                window.onafterprint = function() {
+                                    window.close();
+                                };
+                            }, 500);
+                        };
+                    <\/script>
+                </body>
+                </html>
+            `);
+            printWindow.document.close();
+        }
+    </script>
 </body>
 </html>

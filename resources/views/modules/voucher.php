@@ -406,7 +406,18 @@ foreach (($payload['items'] ?? []) as $item) {
             <button class="btn btn-primary" onclick="window.print()">
                 <i class="fa-solid fa-print"></i> Print Voucher
             </button>
-            <a class="btn btn-soft" href="<?= e(APP_URL) ?>/?route=<?= e($voucher['voucher_type'] === 'mfs' ? 'mfs' : ($voucher['voucher_type'] === 'sale' ? 'pos' : ($voucher['voucher_type'] === 'purchase' ? 'purchases' : ($voucher['voucher_type'] === 'service' ? 'services' : 'utility')))) ?>">
+            <a class="btn btn-soft" href="<?= e(APP_URL) ?>/?route=<?= e(match($voucher['voucher_type']) { 
+                'sale' => 'sales', 
+                'purchase' => 'purchases', 
+                'service' => 'services', 
+                'mfs' => 'mfs', 
+                'utility' => 'utility', 
+                'return' => 'returns', 
+                'salary' => 'salaries', 
+                'income' => 'income', 
+                'expense' => 'expenses', 
+                default => 'vouchers' 
+            }) ?>">
                 <i class="fa-solid fa-arrow-left"></i> Back
             </a>
         </div>

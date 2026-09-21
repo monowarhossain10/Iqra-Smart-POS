@@ -220,6 +220,46 @@ final class ModuleService
         return $voucher;
     }
 
+    public function allVouchers(): array
+    {
+        return $this->db->query("SELECT v.*, u.full_name FROM vouchers v JOIN users u ON u.id = v.created_by ORDER BY v.id DESC LIMIT 100")->fetchAll();
+    }
+
+    public function accountsOverview(): array
+    {
+        $scalar = fn (string $query): float => (float) $this->db->query($query)->fetchColumn();
+        $today = [
+            'sales' => $scalar("SELECT COALESCE(SUM(total), 0) FROM sales WHERE status = 'paid' AND DATE(created_at) = CURDATE()"),
+            'services' => $scalar("SELECT COALESCE(SUM(fee), 0) FROM operator_work_logs WHERE status = 'completed' AND DATE(created_at) = CURDATE()"),
+            'utility_fees' => $scalar("SELECT COALESCE(SUM(service_charge), 0) FROM utility_payments WHERE status = 'paid' AND DATE(created_at) = CURDATE()"),
+            'other_income' => $scalar("SELECT COALESCE(SUM(amount), 0) FROM income_records WHERE income_date = CURDATE()"),
+            'purchases' => $scalar("SELECT COALESCE(SUM(total), 0) FROM purchase_orders WHERE status != 'cancelled' AND DATE(created_at) = CURDATE()"),
+            'expenses' => $scalar("SELECT COALESCE(SUM(amount), 0) FROM expenses WHERE expense_date = CURDATE() AND category != 'Salary'"),
+            'salaries' => $scalar("SELECT COALESCE(SUM(net_amount), 0) FROM salary_payments WHERE DATE(paid_at) = CURDATE()"),
+        ];
+        $today['income'] = $today['sales'] + $today['services'] + $today['utility_fees'] + $today['other_income'];
+        $today['outgoing'] = $today['purchases'] + $today['expenses'] + $today['salaries'];
+        $today['net'] = $today['income'] - $today['outgoing'];
+
+        $position = [
+            'mfs_float' => $scalar('SELECT COALESCE(SUM(current_float), 0) FROM mfs_accounts WHERE is_active = 1'),
+            'inventory_value' => $scalar('SELECT COALESCE(SUM(stock_quantity * buying_price), 0) FROM products WHERE is_active = 1'),
+            'customer_due' => $scalar("SELECT COALESCE(SUM(GREATEST(total - paid_amount, 0)), 0) FROM sales WHERE status = 'partial'"),
+        ];
+
+        $ledger = $this->db->query("SELECT * FROM (
+            SELECT created_at occurred_at, 'Sale' entry_type, CONCAT('Invoice ', invoice_number) description, total inflow, 0 outflow FROM sales WHERE status = 'paid'
+            UNION ALL SELECT created_at, 'Service', COALESCE(task_description, 'Service billing'), fee, 0 FROM operator_work_logs WHERE status = 'completed'
+            UNION ALL SELECT CAST(income_date AS DATETIME), 'Income', CONCAT(category, COALESCE(CONCAT(' · ', description), '')), amount, 0 FROM income_records
+            UNION ALL SELECT created_at, 'Utility fee', CONCAT('Utility payment', COALESCE(CONCAT(' · ', account_number), '')), service_charge, 0 FROM utility_payments WHERE status = 'paid'
+            UNION ALL SELECT created_at, 'Purchase', CONCAT('Purchase ', order_number), 0, total FROM purchase_orders WHERE status != 'cancelled'
+            UNION ALL SELECT CAST(expense_date AS DATETIME), 'Expense', CONCAT(category, COALESCE(CONCAT(' · ', description), '')), 0, amount FROM expenses WHERE category != 'Salary'
+            UNION ALL SELECT paid_at, 'Salary', 'Salary payment', 0, net_amount FROM salary_payments
+        ) ledger ORDER BY occurred_at DESC LIMIT 80")->fetchAll();
+
+        return ['today' => $today, 'position' => $position, 'ledger' => $ledger];
+    }
+
     public function report(?string $startDate = null, ?string $endDate = null): array
     {
         $endDate ??= date('Y-m-d');

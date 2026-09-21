@@ -1,6 +1,10 @@
 <?php
 declare(strict_types=1);
 
+// Enable error reporting at the start
+error_reporting(E_ALL);
+ini_set('display_errors', '1');
+
 require_once dirname(__DIR__) . '/bootstrap.php';
 
 $route = trim((string) ($_GET['route'] ?? 'dashboard'), '/');
@@ -14,7 +18,7 @@ if ($route === 'logout') {
     redirect('');
 }
 
-$moduleRoutes = ['pos', 'sales', 'inventory', 'purchases', 'services', 'mfs', 'utility', 'utf', 'reports', 'returns', 'salaries', 'income', 'expenses', 'users'];
+$moduleRoutes = ['pos', 'sales', 'inventory', 'purchases', 'services', 'mfs', 'utility', 'utf', 'reports', 'accounts', 'returns', 'salaries', 'income', 'expenses', 'users', 'vouchers'];
 
 $loginError = null;
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && $route === 'login') {

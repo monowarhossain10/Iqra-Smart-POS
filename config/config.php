@@ -1,6 +1,12 @@
 <?php
 declare(strict_types=1);
 
+// Enable error reporting for debugging, but log errors in production
+error_reporting(E_ALL);
+ini_set('display_errors', '1');
+ini_set('log_errors', '1');
+ini_set('error_log', dirname(__DIR__) . '/storage/logs/error.log');
+
 $envFile = dirname(__DIR__) . '/.env';
 if (is_file($envFile)) {
     foreach (file($envFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) as $line) {
@@ -16,11 +22,19 @@ if (is_file($envFile)) {
 }
 
 define('APP_NAME', 'Iqra Stationary Solutions');
-$requestScheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
+$forwardedProto = strtolower(trim(explode(',', (string) ($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? ''))[0]));
+$requestScheme = in_array($forwardedProto, ['http', 'https'], true)
+    ? $forwardedProto
+    : ((!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http');
 $requestHost = $_SERVER['HTTP_HOST'] ?? null;
 $defaultAppUrl = $requestHost ? $requestScheme . '://' . $requestHost : 'http://localhost/iqra';
 define('APP_URL', rtrim($_ENV['APP_URL'] ?? $defaultAppUrl, '/'));
 define('APP_ENV', $_ENV['APP_ENV'] ?? 'local');
+
+// Disable error display in production
+if (APP_ENV === 'production') {
+    ini_set('display_errors', '0');
+}
 
 date_default_timezone_set($_ENV['APP_TIMEZONE'] ?? 'Asia/Dhaka');
 
