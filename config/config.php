@@ -27,13 +27,21 @@ $requestScheme = in_array($forwardedProto, ['http', 'https'], true)
     ? $forwardedProto
     : ((!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http');
 $requestHost = $_SERVER['HTTP_HOST'] ?? null;
-$defaultAppUrl = $requestHost ? $requestScheme . '://' . $requestHost : 'http://localhost/iqra';
+$scriptDirectory = str_replace('\\', '/', dirname((string) ($_SERVER['SCRIPT_NAME'] ?? '/')));
+$basePath = $scriptDirectory === '/' || $scriptDirectory === '.' ? '' : '/' . trim($scriptDirectory, '/');
+$defaultAppUrl = $requestHost ? $requestScheme . '://' . $requestHost . $basePath : 'http://localhost/iqra';
 define('APP_URL', rtrim($_ENV['APP_URL'] ?? $defaultAppUrl, '/'));
+$documentRoot = realpath((string) ($_SERVER['DOCUMENT_ROOT'] ?? ''));
+$publicDirectory = realpath(dirname(__DIR__) . '/public');
+$assetPath = $documentRoot !== false && $documentRoot === $publicDirectory ? '' : '/public';
+define('APP_ASSET_URL', APP_URL . $assetPath);
 define('APP_ENV', $_ENV['APP_ENV'] ?? 'local');
 
 // Disable error display in production
 if (APP_ENV === 'production') {
     ini_set('display_errors', '0');
+    ini_set('log_errors', '1');
+    ini_set('error_log', dirname(__DIR__) . '/storage/logs/error.log');
 }
 
 date_default_timezone_set($_ENV['APP_TIMEZONE'] ?? 'Asia/Dhaka');

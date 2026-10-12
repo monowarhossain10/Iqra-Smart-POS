@@ -18,71 +18,30 @@ $summary = array_merge([
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Outfit:wght@600;700&display=swap" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" rel="stylesheet">
-    <link href="<?= e(APP_URL) ?>/assets/css/app.css" rel="stylesheet">
-    <link href="<?= e(APP_URL) ?>/assets/css/modules.css" rel="stylesheet">
+    <link href="<?= e(APP_ASSET_URL) ?>/assets/css/app.css" rel="stylesheet">
+    <link href="<?= e(APP_ASSET_URL) ?>/assets/css/modules.css" rel="stylesheet">
 </head>
-<body style="margin: 0; background-color: #f4f6f9; font-family: 'DM Sans', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; color: #1e293b;">
+<body class="app-body" style="margin: 0; background-color: #f4f6f9; font-family: 'DM Sans', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; color: #1e293b;">
 
     <div style="display: flex; min-height: 100vh; background-color: #f4f6f9;">
-        <!-- Sidebar / Slide Menu Bar -->
-        <aside style="width: 280px; background: #ffffff; border-right: 1px solid #e2e8f0; display: flex; flex-direction: column; position: fixed; top: 0; bottom: 0; left: 0; z-index: 100; box-shadow: 2px 0 5px rgba(0,0,0,0.02);">
-            <div style="padding: 20px; display: flex; align-items: center; gap: 12px; border-bottom: 1px solid #f1f5f9;">
-                <div style="width: 40px; height: 40px; background: #2563eb; color: white; display: flex; align-items: center; justify-content: center; border-radius: 10px; font-size: 1.2rem;">
-                    <i class="fa-solid fa-feather-pointed"></i>
-                </div>
-                <div>
-                    <strong style="font-size: 1.1rem; text-transform: uppercase; color: #1e293b; display: block; letter-spacing: 0.5px;">iqra</strong>
-                    <span style="font-size: 0.75rem; color: #64748b; text-transform: uppercase;">stationary solutions</span>
-                </div>
-            </div>
-            
-            <div style="flex: 1; overflow-y: auto; padding: 16px 12px;">
-                <div style="font-size: 0.75rem; font-weight: 700; color: #94a3b8; text-transform: uppercase; margin-bottom: 8px; padding-left: 12px;">Navigation</div>
-                <ul style="list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 4px;">
-                    <li><a href="?route=pos" style="display: flex; align-items: center; gap: 12px; padding: 10px 14px; border-radius: 8px; text-decoration: none; color: #475569; font-size: 0.9rem; font-weight: 500;"><i class="fa-solid fa-cash-register" style="width: 20px; color: #64748b;"></i>Point of sale <span style="margin-left: auto; background: #f1f5f9; padding: 2px 6px; font-size: 0.75rem; border-radius: 4px; color: #64748b;">F2</span></a></li>
-                    <li><a href="?route=sales" style="display: flex; align-items: center; gap: 12px; padding: 10px 14px; border-radius: 8px; text-decoration: none; color: #475569; font-size: 0.9rem; font-weight: 500;"><i class="fa-solid fa-receipt" style="width: 20px; color: #64748b;"></i>Recent sales</a></li>
-                    <li><a href="?route=inventory" style="display: flex; align-items: center; gap: 12px; padding: 10px 14px; border-radius: 8px; text-decoration: none; color: #475569; font-size: 0.9rem; font-weight: 500;"><i class="fa-solid fa-boxes-stacked" style="width: 20px; color: #64748b;"></i>Inventory</a></li>
-                    <li><a href="?route=purchases" style="display: flex; align-items: center; gap: 12px; padding: 10px 14px; border-radius: 8px; text-decoration: none; color: #475569; font-size: 0.9rem; font-weight: 500;"><i class="fa-solid fa-truck-field" style="width: 20px; color: #64748b;"></i>Purchases</a></li>
-                    <li><a href="?route=services" style="display: flex; align-items: center; gap: 12px; padding: 10px 14px; border-radius: 8px; text-decoration: none; color: #475569; font-size: 0.9rem; font-weight: 500;"><i class="fa-solid fa-print" style="width: 20px; color: #64748b;"></i>Service billing</a></li>
-                    <li><a href="?route=returns" style="display: flex; align-items: center; gap: 12px; padding: 10px 14px; border-radius: 8px; text-decoration: none; color: #475569; font-size: 0.9rem; font-weight: 500;"><i class="fa-solid fa-arrow-rotate-left" style="width: 20px; color: #64748b;"></i>Product returns</a></li>
-                    <li><a href="?route=mfs" style="display: flex; align-items: center; gap: 12px; padding: 10px 14px; border-radius: 8px; text-decoration: none; color: #475569; font-size: 0.9rem; font-weight: 500;"><i class="fa-solid fa-mobile-screen-button" style="width: 20px; color: #64748b;"></i>MFS ledger</a></li>
-                    <li><a href="?route=utility" style="display: flex; align-items: center; gap: 12px; padding: 10px 14px; border-radius: 8px; text-decoration: none; color: #475569; font-size: 0.9rem; font-weight: 500;"><i class="fa-solid fa-receipt" style="width: 20px; color: #64748b;"></i>Utility bills</a></li>
-                    <li><a href="?route=salaries" style="display: flex; align-items: center; gap: 12px; padding: 10px 14px; border-radius: 8px; text-decoration: none; color: #475569; font-size: 0.9rem; font-weight: 500;"><i class="fa-solid fa-users-gear" style="width: 20px; color: #64748b;"></i>Employee salaries</a></li>
-                    <li><a href="?route=income" style="display: flex; align-items: center; gap: 12px; padding: 10px 14px; border-radius: 8px; text-decoration: none; color: #475569; font-size: 0.9rem; font-weight: 500;"><i class="fa-solid fa-hand-holding-dollar" style="width: 20px; color: #64748b;"></i>Income records</a></li>
-                    <li><a href="?route=expenses" style="display: flex; align-items: center; gap: 12px; padding: 10px 14px; border-radius: 8px; text-decoration: none; color: #475569; font-size: 0.9rem; font-weight: 500;"><i class="fa-solid fa-money-bill-wave" style="width: 20px; color: #64748b;"></i>Expenses</a></li>
-                    <li><a href="?route=vouchers" style="display: flex; align-items: center; gap: 12px; padding: 10px 14px; border-radius: 8px; text-decoration: none; color: #475569; font-size: 0.9rem; font-weight: 500;"><i class="fa-solid fa-ticket" style="width: 20px; color: #64748b;"></i>All Vouchers</a></li>
-                    <li><a href="?route=reports" style="display: flex; align-items: center; gap: 12px; padding: 10px 14px; border-radius: 8px; text-decoration: none; color: #475569; font-size: 0.9rem; font-weight: 500;"><i class="fa-solid fa-chart-line" style="width: 20px; color: #64748b;"></i>Reports</a></li>
-                    <li><a href="?route=users" style="display: flex; align-items: center; gap: 12px; padding: 10px 14px; border-radius: 8px; text-decoration: none; color: #475569; font-size: 0.9rem; font-weight: 500;"><i class="fa-solid fa-users" style="width: 20px; color: #64748b;"></i>User management</a></li>
-                    
-                    <!-- Logout Option -->
-                    <li style="margin-top: 15px; border-top: 1px solid #f1f5f9; padding-top: 10px;">
-                        <a href="?route=logout" style="display: flex; align-items: center; gap: 12px; padding: 10px 14px; border-radius: 8px; text-decoration: none; color: #dc2626; font-size: 0.9rem; font-weight: 500; background: #fef2f2;">
-                            <i class="fa-solid fa-right-from-bracket" style="width: 20px; color: #dc2626;"></i>Logout
-                        </a>
-                    </li>
-                </ul>
-            </div>
+        <?php require __DIR__ . '/../partials/sidebar.php'; ?>
 
-            <div style="padding: 16px; border-top: 1px solid #f1f5f9;">
-                <div style="display: flex; align-items: center; gap: 12px; background: #f8fafc; padding: 10px 12px; border-radius: 8px; border: 1px solid #e2e8f0; cursor: pointer;">
-                    <i class="fa-regular fa-circle-question" style="font-size: 1.2rem; color: #2563eb;"></i>
-                    <div style="display: flex; flex-direction: column; line-height: 1.2;">
-                        <strong style="font-size: 0.85rem; color: #1e293b;">Need a hand?</strong>
-                        <small style="font-size: 0.75rem; color: #64748b;">View quick guides</small>
-                    </div>
-                    <i class="fa-solid fa-arrow-up-right-from-square" style="margin-left: auto; font-size: 0.8rem; color: #94a3b8;"></i>
-                </div>
-            </div>
-        </aside>
+        <!-- Sidebar Backdrop for Mobile -->
+        <button type="button" class="sidebar-backdrop" id="sidebarBackdrop" aria-label="Close navigation"></button>
 
         <!-- Main Content Area -->
-        <main style="margin-left: 280px; flex: 1; padding: 30px; box-sizing: border-box;">
+        <main class="main-content" style="margin-left: var(--sidebar, 252px); flex: 1; padding: 30px; box-sizing: border-box;">
             
             <!-- Topbar Header -->
             <header style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; background: white; padding: 16px 24px; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); border: 1px solid #e2e8f0;">
-                <div>
-                    <p style="font-size: 0.75rem; font-weight: 700; color: #2563eb; text-transform: uppercase; margin: 0 0 2px 0; letter-spacing: 0.5px;"><?= date('l, d F Y') ?></p>
-                    <h1 style="font-size: 1.4rem; font-weight: 700; color: #1e293b; margin: 0;">Good morning, <?= e(explode(' ', Auth::user()['name'] ?? 'Admin')[0]) ?> <span style="color: #f59e0b;">✦</span></h1>
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <button class="mobile-menu btn btn-light d-md-none" id="menuToggle" style="border: 0; background: transparent; color: #182c2b; font-size: 18px; margin-right: 12px; padding: 8px 12px; border-radius: 8px;">
+                        <i class="fa-solid fa-bars"></i>
+                    </button>
+                    <div>
+                        <p style="font-size: 0.75rem; font-weight: 700; color: #2563eb; text-transform: uppercase; margin: 0 0 2px 0; letter-spacing: 0.5px;"><?= date('l, d F Y') ?></p>
+                        <h1 style="font-size: 1.4rem; font-weight: 700; color: #1e293b; margin: 0;">Good morning, <?= e(explode(' ', Auth::user()['name'] ?? 'Admin')[0]) ?> <span style="color: #f59e0b;">✦</span></h1>
+                    </div>
                 </div>
                 <div style="display: flex; align-items: center; gap: 15px;">
                     <button style="background: #f8fafc; border: 1px solid #e2e8f0; width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; color: #64748b; position: relative;" title="Notifications">
@@ -100,8 +59,47 @@ $summary = array_merge([
                 </div>
             </header>
 
+            <section class="mobile-dashboard" aria-label="Mobile dashboard">
+                <div class="mobile-dashboard-heading">
+                    <div>
+                        <span class="mobile-eyebrow"><?= date('D, d M') ?> · COUNTER</span>
+                        <h2>Ready to sell?</h2>
+                    </div>
+                    <a class="mobile-report-link" href="?route=reports" aria-label="Open reports"><i class="fa-solid fa-chart-simple"></i></a>
+                </div>
+                <div class="mobile-sales-pulse">
+                    <span><i class="fa-solid fa-arrow-trend-up"></i> Sales today</span>
+                    <strong>৳ <?= number_format($summary['sales_today'], 0) ?></strong>
+                    <small><?= number_format($summary['low_stock']) ?> products need a stock check</small>
+                </div>
+                <?php if (Auth::can('process_sales')): ?>
+                    <form class="mobile-sale" id="mobileSaleForm" method="post" action="?route=pos">
+                        <input type="hidden" name="_csrf" value="<?= e(csrf_token()) ?>">
+                        <input type="hidden" name="cart" id="mobileCartInput" value="[]">
+                        <div class="mobile-section-title"><div><span>NEW TRANSACTION</span><h3>Quick sale</h3></div><a href="?route=pos" aria-label="Open full point of sale"><i class="fa-solid fa-up-right-from-square"></i></a></div>
+                        <label class="mobile-search-field"><i class="fa-solid fa-magnifying-glass"></i><input id="mobileProductSearch" type="search" placeholder="Scan barcode or find a product" autocomplete="off" aria-label="Search products"><kbd>⌕</kbd></label>
+                        <div class="mobile-product-results" id="mobileProductResults" aria-live="polite" hidden></div>
+                        <div class="mobile-cart-heading"><strong>Your order</strong><span id="mobileCartCount">0 items</span></div>
+                        <div class="mobile-cart-items" id="mobileCartItems"><p class="mobile-cart-empty"><i class="fa-solid fa-basket-shopping"></i> Add products to start a sale</p></div>
+                        <div class="mobile-checkout-fields">
+                            <label>Customer <span>Optional</span><input name="customer_name" placeholder="Walk-in customer" autocomplete="name"></label>
+                            <label>Payment method<select name="payment_method" id="mobilePaymentMethod"><?php foreach (['cash', 'bKash', 'Nagad', 'Rocket', 'card', 'mixed'] as $paymentMethod): ?><option><?= e($paymentMethod) ?></option><?php endforeach; ?></select></label>
+                            <label class="mobile-paid-field">Amount received<input name="paid_amount" id="mobilePaidAmount" type="number" min="0" step=".01" inputmode="decimal" placeholder="0.00"></label>
+                        </div>
+                        <button class="mobile-pay-button" id="mobilePayButton" type="submit" name="action" value="sale" disabled><span><i class="fa-solid fa-lock"></i> Complete sale</span><strong id="mobileCartTotal">৳ 0</strong></button>
+                    </form>
+                <?php else: ?>
+                    <a class="mobile-sale-access" href="?route=pos"><i class="fa-solid fa-cash-register"></i> Open point of sale</a>
+                <?php endif; ?>
+                <div class="mobile-dashboard-links">
+                    <a href="?route=inventory"><i class="fa-solid fa-boxes-stacked"></i><span>Inventory</span></a>
+                    <a href="?route=sales"><i class="fa-solid fa-receipt"></i><span>Sales</span></a>
+                    <a href="?route=reports"><i class="fa-solid fa-chart-line"></i><span>Reports</span></a>
+                </div>
+            </section>
+
             <!-- Quick Actions / Business Pulse -->
-            <section style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+            <section class="desktop-dashboard" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
                 <div>
                     <span style="font-size: 0.75rem; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px;">Today at a glance</span>
                     <h2 style="font-size: 1.25rem; font-weight: 700; color: #1e293b; margin: 2px 0 0 0;">Business pulse</h2>
@@ -117,7 +115,7 @@ $summary = array_merge([
             </section>
 
             <!-- KPI Cards Grid -->
-            <section style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; margin-bottom: 25px;">
+            <section class="desktop-dashboard" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; margin-bottom: 25px;">
                 <!-- Card 1 -->
                 <article style="background: white; padding: 20px; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); border: 1px solid #e2e8f0; border-top: 4px solid #0d9488;">
                     <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px;">
@@ -164,7 +162,7 @@ $summary = array_merge([
             </section>
 
             <!-- Dashboard Grid (Sales Table & Low Stock) -->
-            <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 20px; margin-bottom: 25px;">
+            <div class="desktop-dashboard" style="display: grid; grid-template-columns: 2fr 1fr; gap: 20px; margin-bottom: 25px;">
                 <!-- Recent Sales Panel -->
                 <section style="background: white; border-radius: 12px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); border: 1px solid #e2e8f0;">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; border-bottom: 1px solid #f1f5f9; padding-bottom: 10px;">
@@ -255,7 +253,7 @@ $summary = array_merge([
             </div>
 
             <!-- Quick Sale Bar Panel -->
-            <section style="background: white; border-radius: 12px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); border: 1px solid #e2e8f0; margin-bottom: 25px;">
+            <section class="desktop-dashboard" style="background: white; border-radius: 12px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); border: 1px solid #e2e8f0; margin-bottom: 25px;">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; border-bottom: 1px solid #f1f5f9; padding-bottom: 10px;">
                     <div>
                         <span style="font-size: 0.75rem; font-weight: 600; color: #2563eb; text-transform: uppercase;">Counter ready</span>
@@ -283,14 +281,21 @@ $summary = array_merge([
             </section>
 
             <!-- Footer -->
-            <footer style="display: flex; justify-content: space-between; align-items: center; padding-top: 20px; border-top: 1px solid #e2e8f0; color: #64748b; font-size: 0.85rem;">
+            <footer class="desktop-dashboard-footer" style="display: flex; justify-content: space-between; align-items: center; padding-top: 20px; border-top: 1px solid #e2e8f0; color: #64748b; font-size: 0.85rem;">
                 <span>© <?= date('Y') ?> Iqra Stationary Solutions</span>
                 <span style="display: inline-flex; align-items: center; gap: 6px;"><i class="fa-solid fa-circle" style="font-size: 0.5rem; color: #10b981;"></i> All systems operational</span>
             </footer>
+            <nav class="mobile-tab-bar" aria-label="Primary navigation">
+                <a class="active" href="<?= e(APP_URL) ?>"><i class="fa-solid fa-house"></i><span>Home</span></a>
+                <a href="?route=pos"><i class="fa-solid fa-cash-register"></i><span>Sell</span></a>
+                <a href="?route=sales"><i class="fa-solid fa-receipt"></i><span>Sales</span></a>
+                <a href="?route=inventory"><i class="fa-solid fa-boxes-stacked"></i><span>Stock</span></a>
+                <button type="button" id="mobileMoreToggle" aria-label="Open navigation"><i class="fa-solid fa-ellipsis"></i><span>More</span></button>
+            </nav>
         </main>
     </div>
 
-    <script>window.IQRA_APP_URL = <?= json_encode(APP_URL) ?>;</script>
-    <script src="<?= e(APP_URL) ?>/assets/js/app.js"></script>
+    <script>window.IQRA_APP_URL = <?= json_encode(APP_URL) ?>; window.IQRA_ASSET_URL = <?= json_encode(APP_ASSET_URL) ?>;</script>
+    <script src="<?= e(APP_ASSET_URL) ?>/assets/js/app.js"></script>
 </body>
 </html>

@@ -4,6 +4,14 @@ declare(strict_types=1);
 require_once __DIR__ . '/config/config.php';
 require_once __DIR__ . '/config/database.php';
 
+// Ensure storage directory exists
+$storageDir = __DIR__ . '/storage/logs';
+if (!is_dir($storageDir)) {
+    if (!mkdir($storageDir, 0755, true)) {
+        error_log("Failed to create storage directory: $storageDir");
+    }
+}
+
 spl_autoload_register(function (string $class): void {
     $paths = [
         __DIR__ . '/app/Controllers/' . $class . '.php',

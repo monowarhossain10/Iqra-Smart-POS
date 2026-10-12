@@ -18,7 +18,7 @@ final class Database
             $port = env('DB_PORT', '3306');
             $name = env('DB_NAME', 'iqra_erp');
             $user = env('DB_USER', 'root');
-            $password = env('DB_PASSWORD', '');
+            $password = env('DB_PASSWORD', env('DB_PASS', ''));
             $dsn = "mysql:host={$host};port={$port};dbname={$name};charset=utf8mb4";
 
             self::$connection = new PDO($dsn, $user, $password, [

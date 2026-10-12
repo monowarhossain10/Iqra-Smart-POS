@@ -56,8 +56,8 @@ $renderModule = static function (string $module) use ($moduleViewData): void {
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Outfit:wght@600;700&display=swap" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" rel="stylesheet">
-    <link href="<?= e(APP_URL) ?>/assets/css/app.css" rel="stylesheet">
-    <link href="<?= e(APP_URL) ?>/assets/css/modules.css" rel="stylesheet">
+    <link href="<?= e(APP_ASSET_URL) ?>/assets/css/app.css" rel="stylesheet">
+    <link href="<?= e(APP_ASSET_URL) ?>/assets/css/modules.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </head>
 <body class="app-body">
@@ -847,8 +847,8 @@ $renderModule = static function (string $module) use ($moduleViewData): void {
         </footer>
     </main>
 
-    <script>window.IQRA_APP_URL = <?= json_encode(APP_URL) ?>;</script>
-    <script src="<?= e(APP_URL) ?>/assets/js/app.js"></script>
+    <script>window.IQRA_APP_URL = <?= json_encode(APP_URL) ?>; window.IQRA_ASSET_URL = <?= json_encode(APP_ASSET_URL) ?>;</script>
+    <script src="<?= e(APP_ASSET_URL) ?>/assets/js/app.js"></script>
     
     <!-- Product Label Printing Modal -->
     <div class="modal fade" id="labelModal" tabindex="-1" aria-hidden="true">

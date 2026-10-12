@@ -7,40 +7,13 @@
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Outfit:wght@600;700&display=swap" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" rel="stylesheet">
-    <link href="<?= e(APP_URL) ?>/assets/css/app.css" rel="stylesheet">
-    <link href="<?= e(APP_URL) ?>/assets/css/modules.css" rel="stylesheet">
+    <link href="<?= e(APP_ASSET_URL) ?>/assets/css/app.css" rel="stylesheet">
+    <link href="<?= e(APP_ASSET_URL) ?>/assets/css/modules.css" rel="stylesheet">
 </head>
 <body class="app-body">
+
     <!-- Sidebar Navigation -->
-    <aside class="sidebar">
-        <div class="sidebar-brand">
-            <div class="brand-mark">
-                <i class="fa-solid fa-feather-pointed"></i>
-            </div>
-            <div>
-                <strong>iqra</strong>
-                <span>stationary solutions</span>
-            </div>
-        </div>
-
-        <div class="sidebar-label">Workspace</div>
-        <nav class="nav flex-column gap-1">
-            <a class="nav-link" href="<?= e(APP_URL) ?>"><i class="fa-solid fa-grid-2"></i>Overview</a>
-            <a class="nav-link" href="?route=pos"><i class="fa-solid fa-cash-register"></i>Point of sale</a>
-            <a class="nav-link" href="?route=inventory"><i class="fa-solid fa-boxes-stacked"></i>Inventory</a>
-            <a class="nav-link" href="?route=purchases"><i class="fa-solid fa-truck-field"></i>Purchases</a>
-            <a class="nav-link" href="?route=services"><i class="fa-solid fa-print"></i>Service billing</a>
-            <a class="nav-link" href="?route=returns"><i class="fa-solid fa-arrow-rotate-left"></i>Product returns</a>
-        </nav>
-
-        <div class="sidebar-label mt-4">Financials</div>
-        <nav class="nav flex-column gap-1">
-            <a class="nav-link active" href="?route=mfs"><i class="fa-solid fa-mobile-screen-button"></i>MFS ledger</a>
-            <a class="nav-link" href="?route=utility"><i class="fa-solid fa-receipt"></i>Utility bills</a>
-            <a class="nav-link" href="?route=income"><i class="fa-solid fa-hand-holding-dollar"></i>Income records</a>
-            <a class="nav-link" href="?route=reports"><i class="fa-solid fa-chart-line"></i>Reports</a>
-        </nav>
-    </aside>
+        <?php require __DIR__ . '/../partials/sidebar.php'; ?>
 
     <!-- Main Content -->
     <main class="main-content">
@@ -273,6 +246,6 @@
     </main>
 
     <script>window.IQRA_APP_URL = <?= json_encode(APP_URL) ?>;</script>
-    <script src="<?= e(APP_URL) ?>/assets/js/app.js"></script>
+    <script src="<?= e(APP_ASSET_URL) ?>/assets/js/app.js"></script>
 </body>
 </html>

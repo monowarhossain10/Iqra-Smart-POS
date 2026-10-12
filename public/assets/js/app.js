@@ -4,7 +4,7 @@ document.addEventListener('DOMContentLoaded', () => {
   if (document.querySelector('.module-heading')) {
     const moduleStyles = document.createElement('link');
     moduleStyles.rel = 'stylesheet';
-    moduleStyles.href = `${window.IQRA_APP_URL}/assets/css/modules.css`;
+    moduleStyles.href = `${window.IQRA_ASSET_URL}/assets/css/modules.css`;
     document.head.appendChild(moduleStyles);
   }
   const posSearch = document.querySelector('#posProductSearch');
@@ -48,6 +48,88 @@ document.addEventListener('DOMContentLoaded', () => {
       } catch { results.innerHTML = '<div class="search-item">Unable to search right now</div>'; results.classList.add('show'); }
     }, 250);
   });
+
+  const mobileSearch = document.querySelector('#mobileProductSearch');
+  const mobileResults = document.querySelector('#mobileProductResults');
+  const mobileCartItems = document.querySelector('#mobileCartItems');
+  const mobileCartInput = document.querySelector('#mobileCartInput');
+  const mobileCartCount = document.querySelector('#mobileCartCount');
+  const mobileCartTotal = document.querySelector('#mobileCartTotal');
+  const mobilePaidAmount = document.querySelector('#mobilePaidAmount');
+  const mobilePayButton = document.querySelector('#mobilePayButton');
+  const mobileCart = [];
+  let mobileSearchTimer;
+
+  const renderMobileCart = () => {
+    if (!mobileCartItems || !mobileCartInput) return;
+    const count = mobileCart.reduce((total, item) => total + item.quantity, 0);
+    const total = mobileCart.reduce((sum, item) => sum + item.price * item.quantity, 0);
+    mobileCartInput.value = JSON.stringify(mobileCart.map(item => ({ product_id: item.id, quantity: item.quantity })));
+    mobileCartCount.textContent = `${count} ${count === 1 ? 'item' : 'items'}`;
+    mobileCartTotal.textContent = `৳ ${total.toFixed(2)}`;
+    mobilePayButton.disabled = count === 0;
+    if (mobilePaidAmount && !mobilePaidAmount.dataset.edited) mobilePaidAmount.value = total ? total.toFixed(2) : '';
+    mobileCartItems.innerHTML = mobileCart.length ? mobileCart.map((item, index) => `
+      <article class="mobile-cart-row">
+        <div class="mobile-cart-product"><strong>${escapeHtml(item.name)}</strong><small>৳ ${item.price.toFixed(2)} each</small></div>
+        <div class="mobile-quantity-control"><button type="button" data-mobile-cart-action="minus" data-mobile-cart-index="${index}" aria-label="Remove one ${escapeHtml(item.name)}">−</button><span>${item.quantity}</span><button type="button" data-mobile-cart-action="plus" data-mobile-cart-index="${index}" aria-label="Add one ${escapeHtml(item.name)}">+</button></div>
+        <strong class="mobile-line-total">৳ ${(item.price * item.quantity).toFixed(2)}</strong>
+      </article>`).join('') : '<p class="mobile-cart-empty"><i class="fa-solid fa-basket-shopping"></i> Add products to start a sale</p>';
+  };
+
+  mobileSearch?.addEventListener('input', () => {
+    clearTimeout(mobileSearchTimer);
+    const query = mobileSearch.value.trim();
+    if (query.length < 2) { mobileResults.hidden = true; mobileResults.innerHTML = ''; return; }
+    mobileResults.hidden = false;
+    mobileResults.innerHTML = '<p class="mobile-search-message">Searching stock…</p>';
+    mobileSearchTimer = setTimeout(async () => {
+      try {
+        const response = await fetch(`${window.IQRA_APP_URL}/?route=api/products&q=${encodeURIComponent(query)}`, { headers: { Accept: 'application/json' } });
+        const payload = await response.json();
+        mobileResults.innerHTML = payload.data?.length ? payload.data.map(product => {
+          const unavailable = Number(product.stock_quantity) <= 0;
+          const serialized = escapeHtml(JSON.stringify({ id: Number(product.id), name: product.name, sku: product.sku, price: Number(product.selling_price), stock: Number(product.stock_quantity) }));
+          return `<button type="button" class="mobile-product-result" data-mobile-product="${serialized}" ${unavailable ? 'disabled' : ''}><span class="mobile-product-icon"><i class="fa-solid fa-box"></i></span><span class="mobile-product-name"><strong>${escapeHtml(product.name)}</strong><small>${escapeHtml(product.sku)} · ${unavailable ? 'Out of stock' : `${Number(product.stock_quantity)} in stock`}</small></span><strong class="mobile-product-price">৳ ${Number(product.selling_price).toFixed(2)}</strong><i class="fa-solid fa-plus"></i></button>`;
+        }).join('') : '<p class="mobile-search-message">No matching products found.</p>';
+      } catch {
+        mobileResults.innerHTML = '<p class="mobile-search-message">Unable to search stock right now.</p>';
+      }
+    }, 250);
+  });
+
+  mobileResults?.addEventListener('click', event => {
+    const button = event.target.closest('[data-mobile-product]');
+    if (!button || button.disabled) return;
+    const product = JSON.parse(button.dataset.mobileProduct);
+    const existing = mobileCart.find(item => item.id === product.id);
+    if (existing) existing.quantity = Math.min(existing.quantity + 1, product.stock);
+    else mobileCart.push({ ...product, quantity: 1 });
+    renderMobileCart();
+    mobileSearch.value = '';
+    mobileResults.hidden = true;
+    mobileResults.innerHTML = '';
+    mobileSearch.blur();
+  });
+
+  mobileCartItems?.addEventListener('click', event => {
+    const button = event.target.closest('[data-mobile-cart-action]');
+    if (!button) return;
+    const index = Number(button.dataset.mobileCartIndex);
+    const item = mobileCart[index];
+    if (!item) return;
+    if (button.dataset.mobileCartAction === 'plus') item.quantity = Math.min(item.quantity + 1, item.stock);
+    else item.quantity -= 1;
+    if (item.quantity <= 0) mobileCart.splice(index, 1);
+    renderMobileCart();
+  });
+
+  mobilePaidAmount?.addEventListener('input', () => { mobilePaidAmount.dataset.edited = '1'; });
+  document.querySelector('#mobileSaleForm')?.addEventListener('submit', event => {
+    if (!mobileCart.length) event.preventDefault();
+  });
+  document.querySelector('#mobileMoreToggle')?.addEventListener('click', () => document.querySelector('#menuToggle')?.click());
+
   document.addEventListener('click', event => { if (!event.target.closest('.pos-search')) results?.classList.remove('show'); });
   document.addEventListener('keydown', event => {
     if (event.key === 'F2' || ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k')) {
@@ -255,48 +337,18 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 function ensureNavigation() {
-  const links = [
-    ['dashboard', 'Overview', 'fa-grid-2', window.IQRA_APP_URL],
-    ['pos', 'Point of sale', 'fa-cash-register', '?route=pos'],
-    ['sales', 'Recent sales', 'fa-receipt', '?route=sales'],
-    ['inventory', 'Inventory', 'fa-boxes-stacked', '?route=inventory'],
-    ['purchases', 'Purchases', 'fa-truck-field', '?route=purchases'],
-    ['services', 'Service billing', 'fa-print', '?route=services'],
-    ['returns', 'Product returns', 'fa-arrow-rotate-left', '?route=returns'],
-    ['mfs', 'MFS ledger', 'fa-mobile-screen-button', '?route=mfs'],
-    ['utility', 'Utility bills', 'fa-receipt', '?route=utility'],
-    ['salaries', 'Employee salaries', 'fa-users-gear', '?route=salaries'],
-    ['income', 'Income records', 'fa-hand-holding-dollar', '?route=income'],
-    ['expenses', 'Expenses', 'fa-money-bill-wave', '?route=expenses'],
-    ['accounts', 'All accounts', 'fa-wallet', '?route=accounts'],
-    ['vouchers', 'All Vouchers', 'fa-ticket', '?route=vouchers'],
-    ['reports', 'Reports', 'fa-chart-line', '?route=reports'],
-    ['users', 'User management', 'fa-users', '?route=users']
-  ];
   const current = new URLSearchParams(window.location.search).get('route') || 'dashboard';
-  const sidebar = document.querySelector('aside');
+  const sidebar = document.querySelector('aside.sidebar');
   if (!sidebar) return;
 
-  const menuItems = links.map(([route, label, icon, href]) => `
-    <a class="nav-link ${current === route ? 'active' : ''}" href="${href}">
-      <i class="fa-solid ${icon}"></i><span class="nav-label">${label}</span>${route === 'pos' ? '<span class="nav-badge">F2</span>' : ''}
-    </a>`).join('');
-
-  sidebar.className = 'sidebar';
-  sidebar.id = 'sidebar';
-  sidebar.removeAttribute('style');
-  sidebar.innerHTML = `
-    <div class="sidebar-brand">
-      <div class="brand-mark"><i class="fa-solid fa-feather-pointed"></i></div>
-      <div class="brand-copy"><strong>iqra</strong><span>stationary solutions</span></div>
-    </div>
-    <button type="button" class="sidebar-collapse-toggle" id="sidebarCollapseToggle" aria-label="Collapse navigation" aria-expanded="true" title="Collapse navigation"><i class="fa-solid fa-angles-left"></i></button>
-    <div class="sidebar-label">Navigation</div>
-    <nav class="nav flex-column gap-1">${menuItems}</nav>
-    <div class="sidebar-bottom">
-      <div class="help-box"><i class="fa-regular fa-circle-question"></i><div class="help-copy"><strong>Need a hand?</strong><small>Use quick actions</small></div></div>
-      <a class="nav-link logout-link" href="?route=logout"><i class="fa-solid fa-right-from-bracket"></i><span class="nav-label">Logout</span></a>
-    </div>`;
+  // Only update active state if sidebar already exists with proper structure
+  if (sidebar.querySelector('.sidebar-brand')) {
+    document.querySelectorAll('.nav-link').forEach(link => {
+      const href = link.getAttribute('href');
+      const route = href ? new URLSearchParams(href.split('?')[1] || '').get('route') : '';
+      link.classList.toggle('active', route === current || (current === 'dashboard' && route === ''));
+    });
+  }
 
   document.querySelectorAll('main').forEach(main => {
     main.classList.add('main-content');
@@ -315,13 +367,31 @@ function ensureNavigation() {
     header.querySelector(':scope > div')?.prepend(toggle);
   }
 
-  const backdrop = document.createElement('button');
-  backdrop.className = 'sidebar-backdrop';
-  backdrop.type = 'button';
-  backdrop.setAttribute('aria-label', 'Close navigation');
-  document.body.appendChild(backdrop);
+  // Add backdrop if it doesn't exist
+  if (!document.querySelector('.sidebar-backdrop')) {
+    const backdrop = document.createElement('button');
+    backdrop.className = 'sidebar-backdrop';
+    backdrop.type = 'button';
+    backdrop.setAttribute('aria-label', 'Close navigation');
+    document.body.appendChild(backdrop);
+  }
 
   const menuToggle = document.querySelector('#menuToggle');
+  const backdrop = document.querySelector('.sidebar-backdrop');
+
+  // Mobile menu toggle
+  menuToggle?.addEventListener('click', () => {
+    sidebar?.classList.toggle('open');
+    backdrop?.classList.toggle('visible');
+    document.body.classList.toggle('menu-open');
+  });
+
+  backdrop?.addEventListener('click', () => {
+    sidebar?.classList.remove('open');
+    backdrop?.classList.remove('visible');
+    document.body.classList.remove('menu-open');
+  });
+
   const sidebarCollapseToggle = document.querySelector('#sidebarCollapseToggle');
   const setSidebarCollapsed = collapsed => {
     document.body.classList.toggle('sidebar-collapsed', collapsed);
@@ -334,18 +404,15 @@ function ensureNavigation() {
   };
   try { setSidebarCollapsed(window.localStorage.getItem('iqra-sidebar-collapsed') === '1'); } catch { setSidebarCollapsed(false); }
   sidebarCollapseToggle?.addEventListener('click', () => setSidebarCollapsed(!document.body.classList.contains('sidebar-collapsed')));
-  const closeMenu = () => {
-    sidebar.classList.remove('open');
-    backdrop.classList.remove('visible');
-    document.body.classList.remove('menu-open');
-  };
-  menuToggle?.addEventListener('click', () => {
-    sidebar.classList.toggle('open');
-    backdrop.classList.toggle('visible');
-    document.body.classList.toggle('menu-open');
+
+  // Close menu when clicking navigation links on mobile
+  sidebar?.querySelectorAll('a').forEach(link => {
+    link.addEventListener('click', () => {
+      sidebar?.classList.remove('open');
+      backdrop?.classList.remove('visible');
+      document.body.classList.remove('menu-open');
+    });
   });
-  backdrop.addEventListener('click', closeMenu);
-  sidebar.querySelectorAll('a').forEach(link => link.addEventListener('click', closeMenu));
 }
 
 function escapeHtml(value) {

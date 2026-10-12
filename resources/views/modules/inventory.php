@@ -7,11 +7,11 @@
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Outfit:wght@600;700&display=swap" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
-    <link href="<?= e(APP_URL) ?>/assets/css/app.css" rel="stylesheet">
-    <link href="<?= e(APP_URL) ?>/assets/css/modules.css" rel="stylesheet">
+    <link href="<?= e(APP_ASSET_URL) ?>/assets/css/app.css" rel="stylesheet">
+    <link href="<?= e(APP_ASSET_URL) ?>/assets/css/modules.css" rel="stylesheet">
 </head>
 <body style="margin: 0; background-color: #f4f6f9; font-family: 'DM Sans', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; color: #1e293b;">
-
+    <?php require __DIR__ . '/../partials/sidebar.php'; ?>
     <div style="display: flex; min-height: 100vh; background-color: #f4f6f9;">
         <!-- Sidebar / Slide Menu Bar -->
         <aside style="width: 280px; background: #ffffff; border-right: 1px solid #e2e8f0; display: flex; flex-direction: column; position: fixed; top: 0; bottom: 0; left: 0; z-index: 100; box-shadow: 2px 0 5px rgba(0,0,0,0.02);">
